@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "electron-store": "^8.2.0",
+    "firebase": "^12.12.1",
     "loudness": "^0.4.2",
     "systeminformation": "^5.22.0"
   },

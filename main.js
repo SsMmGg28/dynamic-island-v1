@@ -29,6 +29,37 @@ function getSI() {
     return si;
 }
 
+// ── Firebase / StudyLogger ──
+const FIREBASE_CONFIG = {
+    apiKey: 'AIzaSyClGwTN8RFi6nIzpLajlruiO9ntjtvRZcI',
+    authDomain: 'studylogger-c55fe.firebaseapp.com',
+    projectId: 'studylogger-c55fe',
+    storageBucket: 'studylogger-c55fe.firebasestorage.app',
+    messagingSenderId: '54405801440',
+    appId: '1:54405801440:web:4ae8870a091193277bf785',
+};
+
+let _fbAuth = null;
+let _fbDb = null;
+let _fbHelpers = null;
+
+async function initFirebase() {
+    if (_fbAuth) return true;
+    try {
+        const { initializeApp, getApps } = await import('firebase/app');
+        const { getAuth, signInWithCustomToken, signOut } = await import('firebase/auth');
+        const { getFirestore, collection, addDoc, Timestamp } = await import('firebase/firestore');
+        const app = getApps().length > 0 ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
+        _fbAuth = getAuth(app);
+        _fbDb = getFirestore(app);
+        _fbHelpers = { signInWithCustomToken, signOut, collection, addDoc, Timestamp };
+        return true;
+    } catch (e) {
+        console.error('[StudyLogger] Firebase init failed:', e.message);
+        return false;
+    }
+}
+
 // ── Globals ──
 let mainWindow, tray, store, mediaBridge;
 let mediaBridgeReady = false;
@@ -861,6 +892,74 @@ function registerIPC() {
     ipcMain.handle('theme:getPresets', () => THEME_PRESETS);
 
     ipcMain.handle('app:quit', () => app.quit());
+
+    // Open external URL
+    ipcMain.handle('shell:openExternal', (_, url) => {
+        const allowed = /^https:\/\/studyloggeryks\.vercel\.app/;
+        if (allowed.test(url)) shell.openExternal(url);
+    });
+
+    // StudyLogger
+    ipcMain.handle('studylogger:getConfig', () => {
+        return store.get('studylogger') || {};
+    });
+
+    ipcMain.handle('studylogger:signIn', async (_, customToken) => {
+        try {
+            const ok = await initFirebase();
+            if (!ok) return { ok: false, error: 'Firebase başlatılamadı. Firebase yapılandırmasını kontrol edin.' };
+            const credential = await _fbHelpers.signInWithCustomToken(_fbAuth, customToken);
+            const uid = credential.user.uid;
+            store.set('studylogger', { customToken, firebaseUid: uid });
+            return { ok: true, uid };
+        } catch (e) {
+            const code = e.code || '';
+            if (code.includes('expired') || code.includes('invalid-custom-token')) {
+                return { ok: false, error: 'expired' };
+            }
+            return { ok: false, error: e.message };
+        }
+    });
+
+    ipcMain.handle('studylogger:logSession', async (_, payload) => {
+        try {
+            const ok = await initFirebase();
+            if (!ok) return { ok: false, error: 'Firebase başlatılamadı.' };
+            if (!_fbAuth.currentUser) {
+                const saved = store.get('studylogger') || {};
+                if (!saved.customToken) return { ok: false, error: 'no_token' };
+                await _fbHelpers.signInWithCustomToken(_fbAuth, saved.customToken);
+            }
+            const { collection, addDoc, Timestamp } = _fbHelpers;
+            const today = new Date().toISOString().split('T')[0];
+            await addDoc(collection(_fbDb, 'studyLogs'), {
+                uid: payload.uid,
+                subject: payload.subject,
+                topic: payload.topic,
+                durationMinutes: payload.durationMinutes,
+                questionCount: payload.questionCount || 0,
+                notes: payload.notes || 'Masaüstü uygulamasıyla eklendi.',
+                date: today,
+                source: 'desktop_app',
+                createdAt: Timestamp.now(),
+            });
+            return { ok: true };
+        } catch (e) {
+            const code = e.code || '';
+            if (code.includes('permission-denied') || code.includes('expired') || code.includes('unauthenticated')) {
+                return { ok: false, error: 'expired' };
+            }
+            return { ok: false, error: e.message };
+        }
+    });
+
+    ipcMain.handle('studylogger:clearToken', async () => {
+        store.set('studylogger', {});
+        if (_fbAuth) {
+            try { await _fbHelpers.signOut(_fbAuth); } catch {}
+        }
+        return true;
+    });
 }
 
 // ── Theme Presets ──

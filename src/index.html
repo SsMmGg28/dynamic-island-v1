@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src https://lrclib.net https://api.open-meteo.com http://ip-api.com">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src https://lrclib.net https://api.open-meteo.com http://ip-api.com https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com wss://*.firebaseio.com">
     <link rel="stylesheet" href="styles.css">
     <title>Dynamic Island</title>
 </head>
@@ -122,13 +122,17 @@
                         <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                         <span>Notlar</span>
                     </button>
-                    <button class="action-btn" id="act-launcher" data-panel="launcher">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
-                        <span>Başlatıcı</span>
+                    <button class="action-btn" id="act-studylogger-web" title="StudyLogger'ı aç">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                        <span>Web</span>
                     </button>
                     <button class="action-btn" id="act-settings" data-panel="settings">
                         <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19.14 12.94a7.07 7.07 0 0 0 .06-.94c0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a6.93 6.93 0 0 0-1.63-.94l-.36-2.54A.48.48 0 0 0 13.9 2h-3.8a.48.48 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.63.94l-2.39-.96a.49.49 0 0 0-.59.22L2.73 8.87a.48.48 0 0 0 .12.61l2.03 1.58a7.1 7.1 0 0 0 0 1.88l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.63.94l.36 2.54c.05.24.26.41.48.41h3.8c.22 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.63-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
                         <span>Ayarlar</span>
+                    </button>
+                    <button class="action-btn" id="act-studylogger" data-panel="studylogger">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg>
+                        <span>StudyLog</span>
                     </button>
                     <!-- More Menu -->
                     <div class="action-more-wrapper">
@@ -347,22 +351,86 @@
                     </div>
                 </div>
 
-                <!-- App Launcher Panel -->
-                <div class="sub-panel" id="panel-launcher">
+                <!-- StudyLogger Panel -->
+                <div class="sub-panel" id="panel-studylogger">
                     <div class="panel-header">
                         <button class="back-btn" data-back>
                             <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
                         </button>
-                        <h3>Hızlı Başlatıcı</h3>
+                        <h3>StudyLogger</h3>
+                        <div class="panel-header-tabs" style="margin-left:auto">
+                            <button class="tab-btn active" data-sl-tab="sl-log-tab">Kayıt</button>
+                            <button class="tab-btn" data-sl-tab="sl-token-tab">Bağlan</button>
+                        </div>
                     </div>
-                    <div class="panel-body launcher-body">
-                        <div class="launcher-grid" id="launcher-grid"></div>
-                        <div class="launcher-search-box">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                            <input type="text" id="launcher-search-input" placeholder="Uygulama ara..." autocomplete="off" spellcheck="false">
+                    <div class="panel-body studylogger-body">
+                        <div id="sl-status-bar" class="sl-status-bar">
+                            <span id="sl-status-dot" class="sl-status-dot"></span>
+                            <span id="sl-status-text">Bağlantı yok</span>
+                        </div>
+
+                        <!-- Quick-Log Tab -->
+                        <div class="tab-content active" id="sl-log-tab">
+                            <div class="sl-form">
+                                <div class="sl-field">
+                                    <label class="sl-label">Ders</label>
+                                    <select class="sl-select" id="sl-subject">
+                                        <optgroup label="TYT">
+                                            <option value="turkce">Türkçe</option>
+                                            <option value="matematik">Matematik</option>
+                                            <option value="geometri">Geometri</option>
+                                            <option value="tarih">Tarih</option>
+                                            <option value="cografya">Coğrafya</option>
+                                            <option value="felsefe">Felsefe</option>
+                                            <option value="din">Din Kültürü</option>
+                                            <option value="fizik">Fizik</option>
+                                            <option value="kimya">Kimya</option>
+                                            <option value="biyoloji">Biyoloji</option>
+                                        </optgroup>
+                                        <optgroup label="AYT">
+                                            <option value="ayt_matematik">AYT Matematik</option>
+                                            <option value="ayt_geometri">AYT Geometri</option>
+                                            <option value="ayt_fizik">AYT Fizik</option>
+                                            <option value="ayt_kimya">AYT Kimya</option>
+                                            <option value="ayt_biyoloji">AYT Biyoloji</option>
+                                            <option value="diger">Diğer</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                <div class="sl-field">
+                                    <label class="sl-label">Konu</label>
+                                    <select class="sl-select" id="sl-topic"></select>
+                                </div>
+                                <div class="sl-field-row">
+                                    <div class="sl-field">
+                                        <label class="sl-label">Süre (dk)</label>
+                                        <input type="number" class="sl-input" id="sl-duration" min="1" max="600" placeholder="30">
+                                    </div>
+                                    <div class="sl-field">
+                                        <label class="sl-label">Soru</label>
+                                        <input type="number" class="sl-input" id="sl-questions" min="0" max="9999" placeholder="0">
+                                    </div>
+                                </div>
+                                <button class="sl-submit-btn" id="sl-submit">Kaydet</button>
+                            </div>
+                        </div>
+
+                        <!-- Token / Connect Tab -->
+                        <div class="tab-content" id="sl-token-tab">
+                            <p class="sl-hint">Web uygulamasında <strong>Ayarlar → Masaüstü Entegrasyonu</strong>'na gidin, "Token Oluştur"a tıklayın ve kopyalanan token'ı buraya yapıştırın.</p>
+                            <div class="sl-field">
+                                <label class="sl-label">Custom Token</label>
+                                <textarea class="sl-textarea" id="sl-token-input" placeholder="Token buraya yapıştırın..." rows="3"></textarea>
+                            </div>
+                            <div class="sl-btn-row">
+                                <button class="sl-connect-btn" id="sl-connect-btn">Bağlan</button>
+                                <button class="sl-disconnect-btn" id="sl-disconnect-btn" style="display:none">Bağlantıyı Kes</button>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+
 
             </div>
         </div>

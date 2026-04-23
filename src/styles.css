@@ -2238,3 +2238,180 @@ html, body {
     min-width: 32px;
     text-align: right;
 }
+
+/* ── StudyLogger Panel ── */
+
+.studylogger-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sl-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.sl-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    flex-shrink: 0;
+    transition: background 300ms ease;
+}
+
+.sl-status-bar.sl-connected {
+    border-color: rgba(34, 197, 94, 0.25);
+    background: rgba(34, 197, 94, 0.06);
+    color: #86efac;
+}
+
+.sl-status-bar.sl-connected .sl-status-dot {
+    background: #22c55e;
+    box-shadow: 0 0 6px #22c55e99;
+}
+
+.sl-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sl-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sl-field-row {
+    display: flex;
+    gap: 8px;
+}
+
+.sl-field-row .sl-field {
+    flex: 1;
+}
+
+.sl-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.sl-select,
+.sl-input,
+.sl-textarea {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+    transition: border-color 150ms ease;
+    width: 100%;
+}
+
+.sl-select:focus,
+.sl-input:focus,
+.sl-textarea:focus {
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.sl-select option,
+.sl-select optgroup {
+    background: #1a1a2e;
+    color: var(--text);
+}
+
+.sl-textarea {
+    resize: none;
+    line-height: 1.4;
+}
+
+.sl-submit-btn,
+.sl-connect-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms ease;
+    font-family: var(--font);
+    width: 100%;
+    margin-top: 2px;
+}
+
+.sl-submit-btn:hover,
+.sl-connect-btn:hover {
+    filter: brightness(1.15);
+}
+
+.sl-submit-btn:active,
+.sl-connect-btn:active {
+    transform: scale(0.97);
+}
+
+.sl-submit-btn:disabled,
+.sl-connect-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: none;
+    transform: none;
+}
+
+.sl-disconnect-btn {
+    padding: 8px 16px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 10px;
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms ease;
+    font-family: var(--font);
+    width: 100%;
+    margin-top: 4px;
+}
+
+.sl-disconnect-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.sl-btn-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.sl-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.sl-hint strong {
+    color: var(--text);
+}

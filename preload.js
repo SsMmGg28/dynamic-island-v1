@@ -67,6 +67,17 @@ contextBridge.exposeInMainWorld('api', {
     // Quit
     quit: () => ipcRenderer.invoke('app:quit'),
 
+    // Open external URL
+    openUrl: (url) => ipcRenderer.invoke('shell:openExternal', url),
+
+    // StudyLogger
+    studyLogger: {
+        getConfig: () => ipcRenderer.invoke('studylogger:getConfig'),
+        signIn: (token) => ipcRenderer.invoke('studylogger:signIn', token),
+        logSession: (payload) => ipcRenderer.invoke('studylogger:logSession', payload),
+        clearToken: () => ipcRenderer.invoke('studylogger:clearToken'),
+    },
+
     // Events
     onMediaUpdate: (cb) => ipcRenderer.on('media:update', (_, data) => cb(data)),
     onGameModeUpdated: (cb) => ipcRenderer.on('gamemode:updated', (_, active) => cb(active)),

@@ -39,6 +39,10 @@ const state = {
     isIdle: false,
     idleTimer: null,
     idleTimeout: 15000,
+    studyLogger: {
+        uid: null,
+        connected: false,
+    },
 };
 
 // ── DOM Cache ──
@@ -109,10 +113,10 @@ async function init() {
     setupNotesPanel();
     setupNotesEventDelegation();
     setupClipboardEventDelegation();
-    setupLauncherPanel();
     setupScreenshotButton();
     setupMoreMenu();
     setupGameModeSidebar();
+    setupStudyLogger();
     // Load theme presets BEFORE settings so saved theme can be applied
     try {
         state.themePresets = await window.api.getThemePresets() || [];
@@ -342,8 +346,8 @@ function openPanel(panelId) {
     if (panelId === 'weather') loadWeather();
     if (panelId === 'monitor') startMonitorPolling();
     if (panelId === 'notes') loadNotesAndClipboard();
-    if (panelId === 'launcher') loadLauncherApps();
     if (panelId === 'settings') loadSettingsPanel();
+    if (panelId === 'studylogger') loadStudyLoggerPanel();
 }
 
 function closePanel() {
@@ -1193,149 +1197,6 @@ function formatRelativeTime(timestamp) {
     return new Date(timestamp).toLocaleDateString('tr-TR');
 }
 
-// ── App Launcher ──
-function setupLauncherPanel() {
-    // Event delegation for launcher grid (launch + remove)
-    const grid = $('#launcher-grid');
-    if (grid) {
-        grid.addEventListener('click', async (e) => {
-            const removeBtn = e.target.closest('[data-remove-idx]');
-            if (removeBtn) {
-                e.stopPropagation();
-                const idx = parseInt(removeBtn.dataset.removeIdx);
-                state.launcherApps.splice(idx, 1);
-                await window.api.saveLauncherApps(state.launcherApps);
-                renderLauncherApps();
-                return;
-            }
-            const item = e.target.closest('[data-launch-idx]');
-            if (item) {
-                const idx = parseInt(item.dataset.launchIdx);
-                const app = state.launcherApps[idx];
-                if (app) {
-                    const result = await window.api.launchApp(app.path);
-                    if (!result.success) showToast('Uygulama açılamadı');
-                }
-            }
-        });
-    }
-
-    // Search input for adding apps - only show results when typing
-    const searchInput = $('#launcher-search-input');
-    if (searchInput) {
-        let searchTimeout = null;
-        searchInput.addEventListener('input', () => {
-            if (searchTimeout) clearTimeout(searchTimeout);
-            const q = searchInput.value.trim();
-            searchTimeout = setTimeout(() => renderInstalledApps(q), 150);
-        });
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                searchInput.value = '';
-                renderInstalledApps('');
-            }
-        });
-    }
-}
-
-async function loadLauncherApps() {
-    try { state.launcherApps = await window.api.getLauncherApps() || []; } catch { state.launcherApps = []; }
-    renderLauncherApps();
-    // Load installed apps in background (cached in main process)
-    if (!state.installedApps || state.installedApps.length === 0) {
-        try {
-            state.installedApps = await window.api.getInstalledApps() || [];
-        } catch { state.installedApps = []; }
-    }
-    // Clear search and hide results on each panel open
-    const searchInput = $('#launcher-search-input');
-    if (searchInput) searchInput.value = '';
-    renderInstalledApps(''); // empty query = hide list
-}
-
-function renderLauncherApps() {
-    const grid = $('#launcher-grid');
-    if (!grid) return;
-    if (state.launcherApps.length === 0) {
-        grid.innerHTML = '<p class="empty-text">Henüz uygulama eklenmemiş</p>';
-        return;
-    }
-    grid.innerHTML = state.launcherApps.map((app, i) => `
-        <div class="launcher-item" data-launch-idx="${i}">
-            <div class="launcher-icon">
-                ${app.icon ? `<img src="${app.icon}" alt="" width="24" height="24">` : `<svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6zm7 1.5L18.5 9H13V3.5zM8 12h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>`}
-            </div>
-            <span class="launcher-name">${escapeHtml(app.name)}</span>
-            <button class="launcher-remove" data-remove-idx="${i}" title="Kaldır">✕</button>
-        </div>
-    `).join('');
-}
-
-function renderInstalledApps(searchQuery = '') {
-    let section = $('#installed-apps-section');
-    if (!section) {
-        const body = $('.launcher-body');
-        if (!body) return;
-        section = document.createElement('div');
-        section.id = 'installed-apps-section';
-        body.appendChild(section);
-    }
-
-    // If no search query, hide the results section entirely
-    if (!searchQuery) {
-        section.innerHTML = '';
-        return;
-    }
-
-    if (!state.installedApps || state.installedApps.length === 0) {
-        section.innerHTML = '<p class="empty-text" style="margin-top:8px">Uygulamalar yükleniyor...</p>';
-        return;
-    }
-
-    const launcherPaths = new Set(state.launcherApps.map(a => a.path.toLowerCase()));
-    const q = searchQuery.toLowerCase();
-    const available = state.installedApps
-        .filter(a => !launcherPaths.has(a.path.toLowerCase()) && a.name.toLowerCase().includes(q));
-
-    if (available.length === 0) {
-        section.innerHTML = '<p class="empty-text" style="margin-top:8px">Sonuç bulunamadı</p>';
-        return;
-    }
-
-    const displayApps = available.slice(0, 20);
-
-    section.innerHTML = `
-        <div class="installed-grid">
-            ${displayApps.map((app, i) => `
-                <div class="installed-item" data-inst-idx="${i}" title="${escapeHtml(app.name)}">
-                    <div class="installed-icon-wrap">
-                        ${app.icon ? `<img src="${app.icon}" alt="" width="20" height="20">` : `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z"/></svg>`}
-                    </div>
-                    <span class="installed-name">${escapeHtml(app.name)}</span>
-                    <button class="installed-add-btn" data-inst-add="${i}">+</button>
-                </div>
-            `).join('')}
-        </div>
-    `;
-    section.onclick = (e) => {
-        const addBtn = e.target.closest('[data-inst-add]');
-        if (addBtn) {
-            const idx = parseInt(addBtn.dataset.instAdd);
-            const app = displayApps[idx];
-            if (app) {
-                state.launcherApps.push({ name: app.name, path: app.path, icon: app.icon || '' });
-                window.api.saveLauncherApps(state.launcherApps);
-                renderLauncherApps();
-                // Clear search after adding
-                const searchInput = $('#launcher-search-input');
-                if (searchInput) searchInput.value = '';
-                renderInstalledApps('');
-                showToast(`${app.name} eklendi`);
-            }
-        }
-    };
-}
-
 // ── Screenshot ──
 function setupScreenshotButton() {
     // Screenshot in more menu
@@ -1560,6 +1421,188 @@ function setupSettings() {
         if (s) applySettings(s);
         showToast('Ayarlar sıfırlandı');
     });
+}
+
+// ── StudyLogger Subject Topics ──
+const SUBJECT_TOPICS = {
+    turkce: ['Sözcükte Anlam','Cümlede Anlam','Paragrafta Anlam','Ses Bilgisi','Yazım Kuralları','Noktalama İşaretleri','Sözcük Türleri','Fiiller','Fiilimsiler','Sözcükte Yapı ve Ekler','Cümlenin Ögeleri','Cümle Türleri','Anlatım Bozuklukları'],
+    matematik: ['Temel Kavramlar','Sayı Basamakları','Bölme ve Bölünebilme Kuralları','EBOB-EKOK','Rasyonel Sayılar','Basit Eşitsizlikler','Mutlak Değer','Üslü Sayılar','Köklü Sayılar','Çarpanlara Ayırma','Oran ve Orantı','Denklem Çözme','Problemler','Kümeler','Kartezyen Çarpım','Mantık','Fonksiyonlar','Polinomlar','İkinci Dereceden Denklemler','Permütasyon-Kombinasyon-Olasılık','Veri ve İstatistik'],
+    geometri: ['Doğruda Açılar','Üçgende Açılar','Dik ve Özel Üçgenler','Dik Üçgende Trigonometrik Bağıntılar','İkizkenar ve Eşkenar Üçgen','Üçgende Açıortay ve Kenarortay','Üçgende Eşlik ve Benzerlik','Üçgende Alan','Üçgende Açı-Kenar Bağıntıları','Çokgenler','Dörtgenler ve Özel Dörtgenler','Çemberde Açı ve Uzunluk','Dairede Çevre ve Alan','Katı Cisimler','Analitik Geometri'],
+    fizik: ['Fizik Bilimine Giriş','Madde ve Özellikleri','Hareket ve Kuvvet','İş-Güç-Enerji','Isı-Sıcaklık-Genleşme','Elektrostatik','Elektrik Akımı ve Devreler','Manyetizma','Basınç','Kaldırma Kuvveti','Dalgalar','Optik'],
+    kimya: ['Kimya Bilimi','Atom ve Periyodik Sistem','Kimyasal Türler Arası Etkileşimler','Maddenin Halleri','Doğa ve Kimya','Kimyanın Temel Kanunları ve Kimyasal Hesaplamalar','Karışımlar','Asitler-Bazlar-Tuzlar','Kimya Her Yerde'],
+    biyoloji: ['Yaşam Bilimi Biyoloji','Hücre ve Organelleri','Canlıların Dünyası','Hücre Bölünmeleri','Kalıtımın Genel İlkeleri','Ekosistem Ekolojisi ve Güncel Çevre Sorunları'],
+    tarih: ['Tarih ve Zaman','İnsanlığın İlk Dönemleri',"Orta Çağ'da Dünya",'İlk ve Orta Çağlarda Türk Dünyası','İslam Medeniyetinin Doğuşu',"Türklerin İslamiyet'i Kabulü ve İlk Türk İslam Devletleri",'Yerleşme ve Devletleşme Sürecinde Selçuklu Türkiyesi','Beylikten Devlete Osmanlı Siyaseti ve Medeniyeti','Dünya Gücü Osmanlı','Değişim Çağında Avrupa ve Osmanlı','Uluslararası İlişkilerde Denge Stratejisi','XX. Yüzyıl Başlarında Osmanlı Devleti ve Dünya','Millî Mücadele','Atatürkçülük ve Türk İnkılabı'],
+    cografya: ['Doğa ve İnsan',"Dünya'nın Şekli ve Hareketleri",'Coğrafi Konum','Harita Bilgisi','İklim Bilgisi',"Dünya'nın Tektonik Oluşumu",'İç ve Dış Kuvvetler','Su-Toprak-Bitki Varlığı','Nüfus-Göç-Yerleşme',"Türkiye'nin Nüfusu ve Yerleşmesi",'Ekonomik Faaliyetler','Bölgeler ve Ülkeler','Doğal Afetler'],
+    felsefe: ['Felsefeyi Tanıma','Felsefeyle Düşünme','Varlık Felsefesi','Bilgi Felsefesi','Bilim Felsefesi','Ahlak Felsefesi','Din Felsefesi','Siyaset Felsefesi','Sanat Felsefesi','Felsefe Tarihi'],
+    din: ['İnanç','İbadet','Ahlak ve Değerler','Din-Kültür ve Medeniyet','Hz. Muhammed','Vahiy ve Akıl','İslam Düşüncesinde Yorumlar'],
+    ayt_matematik: ['Fonksiyonlarda Uygulamalar','İkinci Dereceden Fonksiyonlar ve Grafikleri','İkinci Dereceden İki Bilinmeyenli Denklem Sistemleri','İkinci Dereceden Eşitsizlikler ve Eşitsizlik Sistemleri','Karmaşık Sayılar','Logaritma','Diziler','Trigonometri','Limit ve Süreklilik','Türev','İntegral','Permütasyon-Kombinasyon-Binom-Olasılık'],
+    ayt_geometri: ['Üçgenler (İleri Düzey)','Çokgenler ve Dörtgenler','Katı Cisimler','Çember ve Daire (İleri Düzey)','Doğrunun Analitik İncelenmesi','Çemberin Analitik İncelenmesi','Dönüşüm Geometrisi'],
+    ayt_fizik: ['Vektörler','Bağıl Hareket',"Newton'un Hareket Yasaları",'Bir Boyutta Sabit İvmeli Hareket (Atışlar)','İki Boyutta Hareket','Enerji ve Hareket','İtme ve Çizgisel Momentum','Tork, Denge ve Kütle Merkezi','Basit Makineler','Elektriksel Kuvvet ve Elektrik Alan','Elektriksel Potansiyel','Düzgün Elektrik Alan ve Sığa','Manyetizma ve Elektromanyetik İndüklenme','Alternatif Akım','Transformatörler','Çembersel Hareket','Dönerek Öteleme Hareketi ve Açısal Momentum','Kütle Çekim Kuvveti ve Kepler Yasaları','Basit Harmonik Hareket','Dalga Mekaniği','Atom Fiziğine Giriş ve Radyoaktivite','Modern Fizik',"Modern Fiziğin Teknolojideki Uygulamaları"],
+    ayt_kimya: ['Modern Atom Teorisi','Gazlar','Sıvı Çözeltiler ve Çözünürlük','Kimyasal Tepkimelerde Enerji','Kimyasal Tepkimelerde Hız','Kimyasal Tepkimelerde Denge','Asit-Baz Dengesi','Çözünürlük Dengesi','Kimya ve Elektrik','Karbon Kimyasına Giriş','Organik Kimya','Enerji Kaynakları ve Bilimsel Gelişmeler'],
+    ayt_biyoloji: ['Sinir Sistemi','Endokrin Sistem','Duyu Organları','Destek ve Hareket Sistemi','Sindirim Sistemi','Dolaşım ve Lenf Sistemi','Bağışıklık Sistemi','Solunum Sistemi','Üriner Sistem','Üreme Sistemi ve Embriyonik Gelişim','Komünite ve Popülasyon Ekolojisi','Genden Proteine','Canlılarda Enerji Dönüşümleri','Bitki Biyolojisi','Canlılar ve Çevre'],
+    diger: [],
+};
+
+function populateTopicDropdown(subjectId) {
+    const topicSel = $('#sl-topic');
+    if (!topicSel) return;
+    const topics = SUBJECT_TOPICS[subjectId] || [];
+    if (topics.length === 0) {
+        topicSel.innerHTML = '<option value="">— Konu seçin —</option>';
+    } else {
+        topicSel.innerHTML = topics.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+    }
+}
+
+// ── StudyLogger ──
+function setupStudyLogger() {
+    // StudyLogger web shortcut button
+    const webBtn = $('#act-studylogger-web');
+    if (webBtn) {
+        webBtn.addEventListener('click', () => {
+            window.api.openUrl('https://studyloggeryks.vercel.app/');
+        });
+    }
+
+    // Populate topic dropdown when subject changes
+    const subjectSel = $('#sl-subject');
+    if (subjectSel) {
+        subjectSel.addEventListener('change', () => populateTopicDropdown(subjectSel.value));
+        populateTopicDropdown(subjectSel.value); // initial population
+    }
+
+    // Tab switching
+    $$('[data-sl-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.dataset.slTab;
+            $$('[data-sl-tab]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            $$('#panel-studylogger .tab-content').forEach(t => t.classList.remove('active'));
+            const tab = $(`#${tabId}`);
+            if (tab) tab.classList.add('active');
+        });
+    });
+
+    // Connect button
+    const connectBtn = $('#sl-connect-btn');
+    if (connectBtn) {
+        connectBtn.addEventListener('click', async () => {
+            const tokenInput = $('#sl-token-input');
+            const token = tokenInput ? tokenInput.value.trim() : '';
+            if (!token) { showToast('Token boş olamaz'); return; }
+            connectBtn.disabled = true;
+            connectBtn.textContent = 'Bağlanıyor...';
+            try {
+                const result = await window.api.studyLogger.signIn(token);
+                if (result.ok) {
+                    state.studyLogger.uid = result.uid;
+                    state.studyLogger.connected = true;
+                    updateStudyLoggerStatus(true);
+                    if (tokenInput) tokenInput.value = '';
+                    showToast('StudyLogger bağlantısı kuruldu');
+                    // Switch to log tab
+                    $$('[data-sl-tab]').forEach(b => b.classList.remove('active'));
+                    const logTabBtn = $('[data-sl-tab="sl-log-tab"]');
+                    if (logTabBtn) logTabBtn.classList.add('active');
+                    $$('#panel-studylogger .tab-content').forEach(t => t.classList.remove('active'));
+                    const logTab = $('#sl-log-tab');
+                    if (logTab) logTab.classList.add('active');
+                } else if (result.error === 'expired') {
+                    showToast('Token geçersiz veya süresi dolmuş. Yeni token oluşturun.');
+                } else {
+                    showToast('Bağlantı hatası: ' + (result.error || 'Bilinmeyen hata'));
+                }
+            } catch (e) {
+                showToast('Bağlantı kurulamadı');
+            } finally {
+                connectBtn.disabled = false;
+                connectBtn.textContent = 'Bağlan';
+            }
+        });
+    }
+
+    // Disconnect button
+    const disconnectBtn = $('#sl-disconnect-btn');
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', async () => {
+            await window.api.studyLogger.clearToken();
+            state.studyLogger.uid = null;
+            state.studyLogger.connected = false;
+            updateStudyLoggerStatus(false);
+            showToast('Bağlantı kesildi');
+        });
+    }
+
+    // Submit log form
+    const submitBtn = $('#sl-submit');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', async () => {
+            if (!state.studyLogger.connected || !state.studyLogger.uid) {
+                showToast('Önce StudyLogger\'a bağlanın (Bağlan sekmesi)');
+                return;
+            }
+            const subject = $('#sl-subject') ? $('#sl-subject').value : '';
+            const topic = $('#sl-topic') ? $('#sl-topic').value.trim() : '';
+            const durationRaw = $('#sl-duration') ? parseInt($('#sl-duration').value) : 0;
+            const questionsRaw = $('#sl-questions') ? parseInt($('#sl-questions').value) : 0;
+
+            if (!topic) { showToast('Konu boş olamaz'); return; }
+            if (!durationRaw || durationRaw < 1) { showToast('Geçerli bir süre girin'); return; }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Kaydediliyor...';
+            try {
+                const result = await window.api.studyLogger.logSession({
+                    uid: state.studyLogger.uid,
+                    subject,
+                    topic,
+                    durationMinutes: durationRaw,
+                    questionCount: isNaN(questionsRaw) ? 0 : questionsRaw,
+                });
+                if (result.ok) {
+                    showToast('Çalışma kaydedildi!');
+                    // Reset duration/questions; keep subject+topic for quick re-entry
+                    if ($('#sl-duration')) $('#sl-duration').value = '';
+                    if ($('#sl-questions')) $('#sl-questions').value = '';
+                } else if (result.error === 'expired') {
+                    state.studyLogger.connected = false;
+                    updateStudyLoggerStatus(false);
+                    showToast('Bağlantı süresi doldu. Ayarlar → StudyLogger\'dan yeni token al.');
+                } else if (result.error === 'no_token') {
+                    showToast('Önce StudyLogger\'a bağlanın (Bağlan sekmesi)');
+                } else {
+                    showToast('Kayıt hatası: ' + (result.error || 'Bilinmeyen hata'));
+                }
+            } catch (e) {
+                showToast('Kayıt gönderilemedi');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Kaydet';
+            }
+        });
+    }
+}
+
+function updateStudyLoggerStatus(connected) {
+    const bar = $('#sl-status-bar');
+    const text = $('#sl-status-text');
+    const connectBtn = $('#sl-connect-btn');
+    const disconnectBtn = $('#sl-disconnect-btn');
+    if (bar) bar.classList.toggle('sl-connected', connected);
+    if (text) text.textContent = connected ? 'Bağlı' : 'Bağlantı yok';
+    if (connectBtn) connectBtn.style.display = connected ? 'none' : '';
+    if (disconnectBtn) disconnectBtn.style.display = connected ? '' : 'none';
+}
+
+async function loadStudyLoggerPanel() {
+    try {
+        const config = await window.api.studyLogger.getConfig();
+        if (config && config.firebaseUid) {
+            state.studyLogger.uid = config.firebaseUid;
+            state.studyLogger.connected = true;
+        }
+    } catch {}
+    updateStudyLoggerStatus(state.studyLogger.connected);
 }
 
 // ── Utilities ──
