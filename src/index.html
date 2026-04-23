@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src https://lrclib.net https://api.open-meteo.com http://ip-api.com">
+    <link rel="stylesheet" href="styles.css">
+    <title>Dynamic Island</title>
+</head>
+<body>
+    <div id="island-wrapper">
+        <div id="island" class="island collapsed">
+
+            <!-- ▸ Collapsed View -->
+            <div class="collapsed-view" id="collapsed-view">
+                <div class="collapsed-left">
+                    <div class="status-dot" id="status-dot"></div>
+                </div>
+                <div class="collapsed-center" id="collapsed-center">
+                    <span class="clock" id="clock-display">00:00</span>
+                    <div class="media-mini" id="media-mini">
+                        <div class="mini-equalizer">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <span class="mini-text" id="mini-text"></span>
+                    </div>
+                </div>
+                <div class="collapsed-right">
+                    <div class="pulse-ring" id="pulse-ring"></div>
+                </div>
+            </div>
+
+            <!-- ▸ Expanded View -->
+            <div class="expanded-view" id="expanded-view">
+
+                <!-- Media Player -->
+                <div class="section media-section" id="media-player">
+                    <div class="media-header">
+                        <div class="media-album-art" id="album-art">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M9 18V5l12-2v13"/>
+                                <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                            </svg>
+                        </div>
+                        <div class="media-info">
+                            <div class="media-title" id="media-title">Müzik çalmıyor</div>
+                            <div class="media-artist" id="media-artist">—</div>
+                        </div>
+                        <div class="media-btns">
+                            <button class="media-btn" id="btn-prev" title="Önceki">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                            </button>
+                            <button class="media-btn btn-play" id="btn-toggle" title="Çal/Duraklat">
+                                <svg viewBox="0 0 24 24" fill="currentColor" id="play-icon"><polygon points="5,3 19,12 5,21"/></svg>
+                            </button>
+                            <button class="media-btn" id="btn-next" title="Sonraki">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="progress-container">
+                        <span class="progress-time" id="time-current">0:00</span>
+                        <div class="progress-track" id="progress-track">
+                            <div class="progress-fill" id="progress-fill"></div>
+                            <div class="progress-thumb" id="progress-thumb"></div>
+                        </div>
+                        <span class="progress-time" id="time-total">0:00</span>
+                    </div>
+
+                    <button class="lyrics-toggle" id="lyrics-toggle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                            <path d="M12 3v18M3 12h18"/>
+                        </svg>
+                        <span>Şarkı Sözleri</span>
+                    </button>
+
+                    <div class="lyrics-container" id="lyrics-container">
+                        <div class="lyrics-scroll" id="lyrics-scroll">
+                            <p class="lyrics-placeholder">Şarkı sözleri yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Controls -->
+                <div class="section controls-section">
+                    <div class="control-row">
+                        <div class="control-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8.5v7a4.49 4.49 0 0 0 2.5-3.5zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06A9 9 0 0 0 14 3.23z"/>
+                            </svg>
+                        </div>
+                        <input type="range" class="slider" id="volume-slider" min="0" max="100" value="50">
+                        <span class="control-val" id="volume-val">50</span>
+                    </div>
+                    <div class="control-row" id="brightness-row">
+                        <div class="control-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                                <path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5a1 1 0 0 1 1 1v2a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v.5a1 1 0 1 1-2 0V21a1 1 0 0 1 1-1zm9-9a1 1 0 0 1 0 2h-2a1 1 0 1 1 0-2h2zM5 12a1 1 0 0 1-1 1H3a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1z"/>
+                            </svg>
+                        </div>
+                        <input type="range" class="slider" id="brightness-slider" min="0" max="100" value="50">
+                        <span class="control-val" id="brightness-val">50</span>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="section actions-section">
+                    <button class="action-btn" id="act-gamemode" data-panel="gamemode">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-10 7H9v2H7v-2H5v-2h2V9h2v2h2v2zm4.5 2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+                        <span>Oyun</span>
+                    </button>
+                    <button class="action-btn" id="act-weather" data-panel="weather">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 7a5 5 0 0 0-4.9 4.04A3.5 3.5 0 0 0 4.5 14.5 3.5 3.5 0 0 0 8 18h8.5a2.5 2.5 0 0 0 .5-4.95A5 5 0 0 0 12 7zm0-2a1 1 0 0 0 1-1V3a1 1 0 1 0-2 0v1a1 1 0 0 0 1 1zm6.36.64a1 1 0 0 0 .7-.29l.72-.72a1 1 0 1 0-1.42-1.42l-.71.72a1 1 0 0 0 .71 1.71zM21 11h-1a1 1 0 1 0 0 2h1a1 1 0 1 0 0-2zM5.64 5.64a1 1 0 0 0 0-1.42l-.71-.71a1 1 0 1 0-1.42 1.42l.72.71a1 1 0 0 0 1.41 0zM4 12a1 1 0 0 0-1-1H2a1 1 0 1 0 0 2h1a1 1 0 0 0 1-1z"/></svg>
+                        <span>Hava</span>
+                    </button>
+                    <button class="action-btn" id="act-monitor" data-panel="monitor">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 14a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+                        <span>Sistem</span>
+                    </button>
+                    <button class="action-btn" id="act-notes" data-panel="notes">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                        <span>Notlar</span>
+                    </button>
+                    <button class="action-btn" id="act-launcher" data-panel="launcher">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+                        <span>Başlatıcı</span>
+                    </button>
+                    <button class="action-btn" id="act-settings" data-panel="settings">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19.14 12.94a7.07 7.07 0 0 0 .06-.94c0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a6.93 6.93 0 0 0-1.63-.94l-.36-2.54A.48.48 0 0 0 13.9 2h-3.8a.48.48 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.63.94l-2.39-.96a.49.49 0 0 0-.59.22L2.73 8.87a.48.48 0 0 0 .12.61l2.03 1.58a7.1 7.1 0 0 0 0 1.88l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.63.94l.36 2.54c.05.24.26.41.48.41h3.8c.22 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.63-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
+                        <span>Ayarlar</span>
+                    </button>
+                    <!-- More Menu -->
+                    <div class="action-more-wrapper">
+                        <button class="action-btn" id="act-more">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                            <span>Daha</span>
+                        </button>
+                        <div class="more-menu" id="more-menu">
+                            <button class="more-menu-item" id="more-timer" data-panel="timer">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61 1.42-1.42A9.9 9.9 0 0 0 18 4.34l-1.42 1.42A7.96 7.96 0 0 0 4 12a8 8 0 0 0 15.03-5.61zM12 20a6 6 0 1 1 0-12 6 6 0 0 1 0 12z"/></svg>
+                                <span>Zamanlayıcı</span>
+                            </button>
+                            <button class="more-menu-item" id="more-screenshot">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                                <span>Ekran Görüntüsü</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ▸ Sub Panels -->
+
+                <!-- Game Mode Panel -->
+                <div class="sub-panel" id="panel-gamemode">
+                    <div class="panel-header">
+                        <button class="back-btn" data-back>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                        <h3>Oyun Modu</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="gamemode-card" id="gamemode-card">
+                            <div class="gamemode-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-10 7H9v2H7v-2H5v-2h2V9h2v2h2v2zm4.5 2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+                            </div>
+                            <p class="gamemode-status" id="gamemode-status">Kapalı</p>
+                            <p class="gamemode-desc">Bildirimleri kapatır, yüksek performans modunu etkinleştirir</p>
+                            <button class="gamemode-toggle" id="gamemode-btn">Etkinleştir</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timer Panel -->
+                <div class="sub-panel" id="panel-timer">
+                    <div class="panel-header">
+                        <button class="back-btn" data-back>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                        <h3>Odak Zamanlayıcısı</h3>
+                    </div>
+                    <div class="panel-body timer-body">
+                        <div class="timer-ring-container">
+                            <svg class="timer-ring" viewBox="0 0 120 120">
+                                <circle class="timer-ring-bg" cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6"/>
+                                <circle class="timer-ring-fill" id="timer-ring-fill" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>
+                            </svg>
+                            <div class="timer-display" id="timer-display">25:00</div>
+                        </div>
+                        <div class="timer-presets">
+                            <button class="preset-btn" data-minutes="15">15dk</button>
+                            <button class="preset-btn active" data-minutes="25">25dk</button>
+                            <button class="preset-btn" data-minutes="45">45dk</button>
+                            <button class="preset-btn" data-minutes="60">60dk</button>
+                        </div>
+                        <button class="timer-start-btn" id="timer-start">Başlat</button>
+                    </div>
+                </div>
+
+                <!-- Weather Panel -->
+                <div class="sub-panel" id="panel-weather">
+                    <div class="panel-header">
+                        <button class="back-btn" data-back>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                        <h3>Hava Durumu</h3>
+                    </div>
+                    <div class="panel-body weather-body" id="weather-body">
+                        <div class="weather-loading">Konum algılanıyor...</div>
+                    </div>
+                </div>
+
+                <!-- System Monitor Panel -->
+                <div class="sub-panel" id="panel-monitor">
+                    <div class="panel-header">
+                        <button class="back-btn" data-back>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                        <h3>Sistem Monitörü</h3>
+                    </div>
+                    <div class="panel-body monitor-body">
+                        <div class="monitor-gauges">
+                            <div class="gauge">
+                                <svg viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+                                    <circle class="gauge-fill" id="cpu-gauge" cx="50" cy="50" r="42" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="263.89" stroke-dashoffset="263.89" transform="rotate(-90 50 50)"/>
+                                </svg>
+                                <div class="gauge-label">
+                                    <span class="gauge-value" id="cpu-value">0%</span>
+                                    <span class="gauge-name">CPU</span>
+                                </div>
+                            </div>
+                            <div class="gauge">
+                                <svg viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+                                    <circle class="gauge-fill" id="ram-gauge" cx="50" cy="50" r="42" fill="none" stroke="#a855f7" stroke-width="8" stroke-linecap="round" stroke-dasharray="263.89" stroke-dashoffset="263.89" transform="rotate(-90 50 50)"/>
+                                </svg>
+                                <div class="gauge-label">
+                                    <span class="gauge-value" id="ram-value">0%</span>
+                                    <span class="gauge-name">RAM</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="monitor-details" id="monitor-details">
+                            <div class="detail-row"><span>RAM Kullanım</span><span id="ram-detail">— / — GB</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Panel -->
+                <div class="sub-panel" id="panel-settings">
+                    <div class="panel-header">
+                        <button class="back-btn" data-back>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                        <h3>Ayarlar</h3>
+                    </div>
+                    <div class="panel-body settings-body">
+                        <div class="setting-group">
+                            <label class="setting-label">Tema</label>
+                            <div class="theme-options" id="theme-options"></div>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Vurgu Rengi</label>
+                            <div class="color-options" id="color-options">
+                                <button class="color-btn active" data-color="#3b82f6" style="background:#3b82f6"></button>
+                                <button class="color-btn" data-color="#ef4444" style="background:#ef4444"></button>
+                                <button class="color-btn" data-color="#22c55e" style="background:#22c55e"></button>
+                                <button class="color-btn" data-color="#f59e0b" style="background:#f59e0b"></button>
+                                <button class="color-btn" data-color="#a855f7" style="background:#a855f7"></button>
+                                <button class="color-btn" data-color="#ec4899" style="background:#ec4899"></button>
+                                <button class="color-btn" data-color="#06b6d4" style="background:#06b6d4"></button>
+                                <button class="color-btn" data-color="#ffffff" style="background:#ffffff"></button>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Opaklık</label>
+                            <input type="range" class="slider" id="opacity-slider" min="50" max="100" value="90">
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Konum</label>
+                            <div class="position-options" id="position-options">
+                                <button class="pos-btn" data-pos="left">Sol</button>
+                                <button class="pos-btn active" data-pos="center">Orta</button>
+                                <button class="pos-btn" data-pos="right">Sağ</button>
+                            </div>
+                        </div>
+                        <div class="setting-group setting-row">
+                            <label class="setting-label">Şarkı Sözlerini Göster</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="lyrics-setting" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-group setting-row">
+                            <label class="setting-label">Windows ile Başlat</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="autostart-setting">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Boşta Kalma Süresi</label>
+                            <div class="setting-row-inline">
+                                <input type="range" class="slider" id="idle-timeout-slider" min="5" max="60" value="15">
+                                <span class="control-val" id="idle-timeout-val">15sn</span>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Monitör</label>
+                            <select class="setting-select" id="display-select"></select>
+                        </div>
+                        <div class="setting-group">
+                            <div class="setting-footer">
+                                <span class="app-version">Dynamic Island v1.1</span>
+                                <button class="reset-btn" id="reset-settings">Sıfırla</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes / Clipboard Panel -->
+                <div class="sub-panel" id="panel-notes">
+                    <div class="panel-header">
+                        <button class="back-btn" data-back>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                        <h3>Notlar & Pano</h3>
+                        <div class="panel-header-tabs">
+                            <button class="tab-btn active" data-tab="notes-tab">Notlar</button>
+                            <button class="tab-btn" data-tab="clipboard-tab">Pano</button>
+                        </div>
+                    </div>
+                    <div class="panel-body notes-body">
+                        <div class="tab-content active" id="notes-tab">
+                            <div class="note-input-row">
+                                <input type="text" class="note-input" id="note-input" placeholder="Yeni not ekle..." maxlength="200">
+                                <button class="note-add-btn" id="note-add-btn">+</button>
+                            </div>
+                            <div class="notes-list" id="notes-list"></div>
+                        </div>
+                        <div class="tab-content" id="clipboard-tab">
+                            <div class="clipboard-list" id="clipboard-list">
+                                <p class="empty-text">Pano geçmişi boş</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- App Launcher Panel -->
+                <div class="sub-panel" id="panel-launcher">
+                    <div class="panel-header">
+                        <button class="back-btn" data-back>
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                        <h3>Hızlı Başlatıcı</h3>
+                    </div>
+                    <div class="panel-body launcher-body">
+                        <div class="launcher-grid" id="launcher-grid"></div>
+                        <div class="launcher-search-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                            <input type="text" id="launcher-search-input" placeholder="Uygulama ara..." autocomplete="off" spellcheck="false">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Game Mode Sidebar -->
+    <div id="gamemode-sidebar" class="gamemode-sidebar">
+        <div class="gm-sidebar-inner">
+            <!-- Header -->
+            <div class="gm-sidebar-header">
+                <div class="gm-sidebar-title-row">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" class="gm-sidebar-icon"><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-10 7H9v2H7v-2H5v-2h2V9h2v2h2v2zm4.5 2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+                    <span>OYUN MODU</span>
+                </div>
+                <span class="gm-sidebar-uptime" id="gm-sidebar-uptime">00:00:00</span>
+            </div>
+
+            <!-- System Stats -->
+            <div class="gm-sidebar-section">
+                <div class="gm-sidebar-stats">
+                    <div class="gm-sidebar-stat">
+                        <svg viewBox="0 0 100 100" class="gm-mini-gauge">
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+                            <circle class="gm-cpu-arc" cx="50" cy="50" r="40" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="251.33" transform="rotate(-90 50 50)"/>
+                        </svg>
+                        <div class="gm-sidebar-stat-info">
+                            <span class="gm-sidebar-stat-val gm-s-cpu">0%</span>
+                            <span class="gm-sidebar-stat-label">CPU</span>
+                        </div>
+                    </div>
+                    <div class="gm-sidebar-stat">
+                        <svg viewBox="0 0 100 100" class="gm-mini-gauge">
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+                            <circle class="gm-ram-arc" cx="50" cy="50" r="40" fill="none" stroke="#a855f7" stroke-width="8" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="251.33" transform="rotate(-90 50 50)"/>
+                        </svg>
+                        <div class="gm-sidebar-stat-info">
+                            <span class="gm-sidebar-stat-val gm-s-ram">0%</span>
+                            <span class="gm-sidebar-stat-label">RAM</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FPS / Performance -->
+            <div class="gm-sidebar-section">
+                <div class="gm-sidebar-perf">
+                    <div class="gm-perf-item">
+                        <span class="gm-perf-label">GPU</span>
+                        <span class="gm-perf-val gm-s-gpu">—</span>
+                    </div>
+                    <div class="gm-perf-item">
+                        <span class="gm-perf-label">Sıcaklık</span>
+                        <span class="gm-perf-val gm-s-temp">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Now Playing -->
+            <div class="gm-sidebar-section gm-sidebar-media">
+                <div class="gm-sidebar-album" id="gm-sidebar-album">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+                        <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                    </svg>
+                </div>
+                <div class="gm-sidebar-media-info">
+                    <div class="gm-sidebar-media-title" id="gm-sidebar-title">Müzik çalmıyor</div>
+                    <div class="gm-sidebar-media-artist" id="gm-sidebar-artist">—</div>
+                </div>
+                <div class="gm-sidebar-controls">
+                    <button class="gm-s-btn gm-s-prev" title="Önceki">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                    </button>
+                    <button class="gm-s-btn gm-s-play gm-s-toggle" title="Çal/Duraklat">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" class="gm-s-play-icon"><polygon points="5,3 19,12 5,21"/></svg>
+                    </button>
+                    <button class="gm-s-btn gm-s-next" title="Sonraki">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Volume -->
+            <div class="gm-sidebar-section">
+                <div class="gm-sidebar-volume">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8.5v7a4.49 4.49 0 0 0 2.5-3.5z"/></svg>
+                    <input type="range" class="gm-sidebar-slider" id="gm-volume-slider" min="0" max="100" value="50">
+                    <span class="gm-sidebar-vol-val" id="gm-volume-val">50</span>
+                </div>
+            </div>
+
+            <!-- Timer (visible when running) -->
+            <div class="gm-sidebar-section gm-sidebar-timer" id="gm-sidebar-timer" style="display:none">
+                <div class="gm-sidebar-timer-display">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61 1.42-1.42A9.9 9.9 0 0 0 18 4.34l-1.42 1.42A7.96 7.96 0 0 0 4 12a8 8 0 0 0 15.03-5.61z"/></svg>
+                    <span class="gm-sidebar-timer-val" id="gm-sidebar-timer-val">25:00</span>
+                </div>
+            </div>
+
+            <!-- Spacer -->
+            <div class="gm-sidebar-spacer"></div>
+
+            <!-- Exit Button -->
+            <button class="gm-sidebar-exit" id="gm-sidebar-exit">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                <span>Çık</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

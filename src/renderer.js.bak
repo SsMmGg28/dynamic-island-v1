@@ -1,0 +1,690 @@
+/* ══════════════════════════════════════════════════════════════
+   Dynamic Island for Windows — Renderer
+   ══════════════════════════════════════════════════════════════ */
+
+// ── State ──
+const state = {
+    expanded: false,
+    locked: false,        // locked when sub-panel is open
+    activePanel: null,
+    media: null,
+    lyricsData: null,     // parsed LRC lyrics
+    lyricsActive: false,
+    lastLyricsQuery: '',
+    volume: 50,
+    brightness: 50,
+    brightnessSupported: true,
+    gameModeActive: false,
+    weather: null,
+    weatherLocation: null,
+    timerTotal: 25 * 60,  // seconds
+    timerRemaining: 25 * 60,
+    timerRunning: false,
+    timerInterval: null,
+    settings: {},
+    monitorInterval: null,
+    interpolatedPos: 0,
+    lastMediaTime: 0,
+    posInterval: null,
+};
+
+// ── DOM Cache ──
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+const dom = {
+    island: $('#island'),
+    collapsedView: $('#collapsed-view'),
+    expandedView: $('#expanded-view'),
+    clock: $('#clock-display'),
+    statusDot: $('#status-dot'),
+    mediaMini: $('#media-mini'),
+    miniText: $('#mini-text'),
+    pulseRing: $('#pulse-ring'),
+    mediaTitle: $('#media-title'),
+    mediaArtist: $('#media-artist'),
+    playIcon: $('#play-icon'),
+    btnToggle: $('#btn-toggle'),
+    btnPrev: $('#btn-prev'),
+    btnNext: $('#btn-next'),
+    timeCurrent: $('#time-current'),
+    timeTotal: $('#time-total'),
+    progressFill: $('#progress-fill'),
+    progressThumb: $('#progress-thumb'),
+    progressTrack: $('#progress-track'),
+    lyricsToggle: $('#lyrics-toggle'),
+    lyricsContainer: $('#lyrics-container'),
+    lyricsScroll: $('#lyrics-scroll'),
+    volumeSlider: $('#volume-slider'),
+    volumeVal: $('#volume-val'),
+    brightnessSlider: $('#brightness-slider'),
+    brightnessVal: $('#brightness-val'),
+    brightnessRow: $('#brightness-row'),
+    gamemodeCard: $('#gamemode-card'),
+    gamemodeStatus: $('#gamemode-status'),
+    gamemodeBtn: $('#gamemode-btn'),
+    timerDisplay: $('#timer-display'),
+    timerRingFill: $('#timer-ring-fill'),
+    timerStartBtn: $('#timer-start'),
+    weatherBody: $('#weather-body'),
+    cpuGauge: $('#cpu-gauge'),
+    ramGauge: $('#ram-gauge'),
+    cpuValue: $('#cpu-value'),
+    ramValue: $('#ram-value'),
+    ramDetail: $('#ram-detail'),
+    opacitySlider: $('#opacity-slider'),
+    lyricsSetting: $('#lyrics-setting'),
+};
+
+// ── Initialization ──
+async function init() {
+    updateClock();
+    setInterval(updateClock, 1000);
+    setupIslandEvents();
+    setupMediaControls();
+    setupSliders();
+    setupActions();
+    setupTimer();
+    setupSettings();
+    await loadSettings();
+    await loadInitialData();
+    window.api.onMediaUpdate(handleMediaUpdate);
+}
+
+// ── Clock ──
+function updateClock() {
+    const now = new Date();
+    dom.clock.textContent = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ── Island Expand / Collapse ──
+let collapseTimeout = null;
+
+function setupIslandEvents() {
+    dom.island.addEventListener('mouseenter', () => {
+        if (collapseTimeout) { clearTimeout(collapseTimeout); collapseTimeout = null; }
+        expandIsland();
+    });
+
+    dom.island.addEventListener('mouseleave', () => {
+        if (state.locked) return;
+        collapseTimeout = setTimeout(collapseIsland, 400);
+    });
+}
+
+function expandIsland() {
+    if (state.expanded) return;
+    state.expanded = true;
+    dom.island.classList.remove('collapsed');
+    dom.island.classList.add('expanded');
+    refreshMonitor();
+}
+
+function collapseIsland() {
+    if (!state.expanded || state.locked) return;
+    state.expanded = false;
+    state.activePanel = null;
+    dom.island.classList.remove('expanded', 'sub-open');
+    dom.island.classList.add('collapsed');
+    // Hide all sub-panels
+    $$('.sub-panel').forEach(p => p.classList.remove('active'));
+    stopMonitorPolling();
+}
+
+// ── Sub Panel Navigation ──
+function openPanel(panelId) {
+    state.locked = true;
+    state.activePanel = panelId;
+    dom.island.classList.add('sub-open');
+    $$('.sub-panel').forEach(p => p.classList.remove('active'));
+    const panel = $(`#panel-${panelId}`);
+    if (panel) panel.classList.add('active');
+    // Trigger panel-specific logic
+    if (panelId === 'weather') loadWeather();
+    if (panelId === 'monitor') startMonitorPolling();
+}
+
+function closePanel() {
+    state.locked = false;
+    state.activePanel = null;
+    dom.island.classList.remove('sub-open');
+    $$('.sub-panel').forEach(p => p.classList.remove('active'));
+    stopMonitorPolling();
+}
+
+function setupActions() {
+    $$('.action-btn[data-panel]').forEach(btn => {
+        btn.addEventListener('click', () => openPanel(btn.dataset.panel));
+    });
+    $$('.back-btn[data-back]').forEach(btn => {
+        btn.addEventListener('click', closePanel);
+    });
+}
+
+// ── Media ──
+function handleMediaUpdate(info) {
+    if (!info) return;
+    state.media = info;
+    state.interpolatedPos = info.position || 0;
+    state.lastMediaTime = Date.now();
+    updateMediaUI();
+
+    // Start/stop position interpolation
+    if (info.status === 'Playing' && !state.posInterval) {
+        state.posInterval = setInterval(interpolatePosition, 100);
+    } else if (info.status !== 'Playing' && state.posInterval) {
+        clearInterval(state.posInterval);
+        state.posInterval = null;
+    }
+}
+
+function interpolatePosition() {
+    if (!state.media || state.media.status !== 'Playing') return;
+    const elapsed = (Date.now() - state.lastMediaTime) / 1000;
+    state.interpolatedPos = Math.min((state.media.position || 0) + elapsed, state.media.duration || 0);
+    if (state.media.duration > 0) {
+        const pct = (state.interpolatedPos / state.media.duration) * 100;
+        dom.progressFill.style.width = pct + '%';
+        dom.progressThumb.style.left = pct + '%';
+        dom.timeCurrent.textContent = formatTime(state.interpolatedPos);
+    }
+    if (state.lyricsActive && state.lyricsData) {
+        updateLyricsDisplay(state.interpolatedPos);
+    }
+}
+
+function updateMediaUI() {
+    const m = state.media;
+    if (!m || !m.title || m.status === 'None') {
+        // No media
+        dom.statusDot.classList.remove('active');
+        dom.mediaMini.classList.remove('active');
+        dom.pulseRing.classList.remove('active');
+        dom.clock.classList.remove('hidden');
+        dom.mediaTitle.textContent = 'Müzik çalmıyor';
+        dom.mediaArtist.textContent = '—';
+        dom.miniText.textContent = '';
+        updatePlayIcon(false);
+        return;
+    }
+
+    const isPlaying = m.status === 'Playing';
+
+    // Collapsed view
+    dom.statusDot.classList.add('active');
+    dom.pulseRing.classList.toggle('active', isPlaying);
+    dom.clock.classList.add('hidden');
+    dom.mediaMini.classList.add('active');
+    dom.miniText.textContent = `${m.title} — ${m.artist}`;
+
+    const eq = dom.mediaMini.querySelector('.mini-equalizer');
+    eq.classList.toggle('paused', !isPlaying);
+
+    // Expanded view
+    dom.mediaTitle.textContent = m.title || 'Bilinmeyen';
+    dom.mediaArtist.textContent = m.artist || 'Bilinmeyen Sanatçı';
+
+    updatePlayIcon(isPlaying);
+
+    // Progress
+    if (m.duration > 0) {
+        const pct = (m.position / m.duration) * 100;
+        dom.progressFill.style.width = pct + '%';
+        dom.progressThumb.style.left = pct + '%';
+        dom.timeCurrent.textContent = formatTime(m.position);
+        dom.timeTotal.textContent = formatTime(m.duration);
+    }
+
+    // Fetch lyrics if song changed
+    const lyricsKey = `${m.title}|${m.artist}`;
+    if (lyricsKey !== state.lastLyricsQuery && state.lyricsActive) {
+        state.lastLyricsQuery = lyricsKey;
+        fetchLyrics(m.title, m.artist, m.duration);
+    }
+
+    // Update synced lyrics display
+    if (state.lyricsActive && state.lyricsData) {
+        updateLyricsDisplay(m.position);
+    }
+}
+
+function updatePlayIcon(playing) {
+    dom.playIcon.innerHTML = playing
+        ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+        : '<polygon points="5,3 19,12 5,21"/>';
+}
+
+function setupMediaControls() {
+    dom.btnToggle.addEventListener('click', () => window.api.mediaToggle());
+    dom.btnPrev.addEventListener('click', () => window.api.mediaPrev());
+    dom.btnNext.addEventListener('click', () => window.api.mediaNext());
+}
+
+// ── Lyrics ──
+async function fetchLyrics(title, artist, duration) {
+    dom.lyricsScroll.innerHTML = '<p class="lyrics-placeholder">Şarkı sözleri aranıyor...</p>';
+
+    try {
+        const data = await window.api.getLyrics(title, artist, duration);
+        if (data && data.syncedLyrics) {
+            state.lyricsData = parseLRC(data.syncedLyrics);
+            renderLyrics();
+        } else if (data && data.plainLyrics) {
+            state.lyricsData = null;
+            dom.lyricsScroll.innerHTML = data.plainLyrics
+                .split('\n')
+                .map(l => `<p class="lyrics-line">${escapeHtml(l)}</p>`)
+                .join('');
+        } else {
+            state.lyricsData = null;
+            dom.lyricsScroll.innerHTML = '<p class="lyrics-placeholder">Şarkı sözü bulunamadı</p>';
+        }
+    } catch {
+        state.lyricsData = null;
+        dom.lyricsScroll.innerHTML = '<p class="lyrics-placeholder">Şarkı sözü yüklenemedi</p>';
+    }
+}
+
+function parseLRC(lrc) {
+    const lines = [];
+    for (const line of lrc.split('\n')) {
+        const match = line.match(/^\[(\d+):(\d+)\.(\d+)\](.*)/);
+        if (match) {
+            const time = parseInt(match[1]) * 60 + parseInt(match[2]) + parseInt(match[3]) / 100;
+            lines.push({ time, text: match[4].trim() });
+        }
+    }
+    return lines;
+}
+
+function renderLyrics() {
+    if (!state.lyricsData || state.lyricsData.length === 0) return;
+    dom.lyricsScroll.innerHTML = state.lyricsData
+        .map((l, i) => `<p class="lyrics-line" data-idx="${i}">${escapeHtml(l.text) || '♪'}</p>`)
+        .join('');
+}
+
+function updateLyricsDisplay(position) {
+    if (!state.lyricsData) return;
+    let activeIdx = 0;
+    for (let i = 0; i < state.lyricsData.length; i++) {
+        if (state.lyricsData[i].time <= position) activeIdx = i;
+        else break;
+    }
+    const lines = dom.lyricsScroll.querySelectorAll('.lyrics-line');
+    lines.forEach((el, i) => {
+        el.classList.remove('active', 'near');
+        if (i === activeIdx) el.classList.add('active');
+        else if (Math.abs(i - activeIdx) <= 2) el.classList.add('near');
+    });
+    // Scroll active line into view
+    const activeLine = lines[activeIdx];
+    if (activeLine) {
+        const container = dom.lyricsContainer;
+        const scrollTop = activeLine.offsetTop - container.clientHeight / 2 + activeLine.clientHeight / 2;
+        dom.lyricsScroll.style.transform = `translateY(-${Math.max(0, scrollTop)}px)`;
+    }
+}
+
+function setupLyricsToggle() {
+    dom.lyricsToggle.addEventListener('click', () => {
+        state.lyricsActive = !state.lyricsActive;
+        dom.lyricsToggle.classList.toggle('active', state.lyricsActive);
+        dom.lyricsContainer.classList.toggle('active', state.lyricsActive);
+
+        // Update toggle icon
+        const svg = dom.lyricsToggle.querySelector('svg');
+        if (state.lyricsActive) {
+            svg.innerHTML = '<path d="M18 6L6 18M6 6l12 12"/>';
+        } else {
+            svg.innerHTML = '<path d="M12 3v18M3 12h18"/>';
+        }
+
+        if (state.lyricsActive && state.media && state.media.title) {
+            const key = `${state.media.title}|${state.media.artist}`;
+            if (key !== state.lastLyricsQuery) {
+                state.lastLyricsQuery = key;
+                fetchLyrics(state.media.title, state.media.artist, state.media.duration);
+            }
+        }
+    });
+}
+
+// ── System Controls ──
+function setupSliders() {
+    // Volume
+    dom.volumeSlider.addEventListener('input', async (e) => {
+        const val = parseInt(e.target.value);
+        dom.volumeVal.textContent = val;
+        await window.api.setVolume(val);
+    });
+
+    // Brightness
+    dom.brightnessSlider.addEventListener('input', async (e) => {
+        const val = parseInt(e.target.value);
+        dom.brightnessVal.textContent = val;
+        await window.api.setBrightness(val);
+    });
+
+    // Slider gradient fills
+    [dom.volumeSlider, dom.brightnessSlider, dom.opacitySlider].forEach(setupSliderFill);
+    setupLyricsToggle();
+}
+
+function setupSliderFill(slider) {
+    if (!slider) return;
+    const updateFill = () => {
+        const min = parseFloat(slider.min) || 0;
+        const max = parseFloat(slider.max) || 100;
+        const pct = ((slider.value - min) / (max - min)) * 100;
+        slider.style.background = `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.1) ${pct}%)`;
+    };
+    slider.addEventListener('input', updateFill);
+    updateFill();
+}
+
+async function loadInitialData() {
+    // Volume
+    try {
+        const vol = await window.api.getVolume();
+        state.volume = vol;
+        dom.volumeSlider.value = vol;
+        dom.volumeVal.textContent = vol;
+        setupSliderFill(dom.volumeSlider);
+    } catch {}
+
+    // Brightness
+    try {
+        const br = await window.api.getBrightness();
+        if (br < 0) {
+            state.brightnessSupported = false;
+            dom.brightnessRow.style.display = 'none';
+        } else {
+            state.brightness = br;
+            dom.brightnessSlider.value = br;
+            dom.brightnessVal.textContent = br;
+            setupSliderFill(dom.brightnessSlider);
+        }
+    } catch {
+        dom.brightnessRow.style.display = 'none';
+    }
+
+    // Game mode
+    try {
+        state.gameModeActive = await window.api.getGameMode();
+        updateGameModeUI();
+    } catch {}
+}
+
+// ── Game Mode ──
+function updateGameModeUI() {
+    const active = state.gameModeActive;
+    dom.gamemodeCard.classList.toggle('active', active);
+    dom.gamemodeStatus.textContent = active ? 'Aktif' : 'Kapalı';
+    dom.gamemodeBtn.textContent = active ? 'Devre Dışı Bırak' : 'Etkinleştir';
+    dom.island.classList.toggle('gamemode-active', active);
+    $('#act-gamemode').classList.toggle('active', active);
+}
+
+function setupGameMode() {
+    dom.gamemodeBtn.addEventListener('click', async () => {
+        state.gameModeActive = !state.gameModeActive;
+        await window.api.setGameMode(state.gameModeActive);
+        updateGameModeUI();
+    });
+}
+
+// ── Timer ──
+function setupTimer() {
+    $$('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (state.timerRunning) return;
+            $$('.preset-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const mins = parseInt(btn.dataset.minutes);
+            state.timerTotal = mins * 60;
+            state.timerRemaining = mins * 60;
+            updateTimerDisplay();
+        });
+    });
+
+    dom.timerStartBtn.addEventListener('click', () => {
+        if (state.timerRunning) {
+            stopTimer();
+        } else {
+            startTimer();
+        }
+    });
+
+    updateTimerDisplay();
+    setupGameMode();
+}
+
+function startTimer() {
+    state.timerRunning = true;
+    dom.timerStartBtn.textContent = 'Durdur';
+    dom.timerStartBtn.classList.add('running');
+
+    state.timerInterval = setInterval(() => {
+        state.timerRemaining--;
+        if (state.timerRemaining <= 0) {
+            stopTimer();
+            state.timerRemaining = state.timerTotal;
+            // Notify
+            new Notification('Dynamic Island', { body: 'Zamanlayıcı tamamlandı! ⏰', silent: false });
+        }
+        updateTimerDisplay();
+    }, 1000);
+}
+
+function stopTimer() {
+    state.timerRunning = false;
+    clearInterval(state.timerInterval);
+    dom.timerStartBtn.textContent = 'Başlat';
+    dom.timerStartBtn.classList.remove('running');
+}
+
+function updateTimerDisplay() {
+    const mins = Math.floor(state.timerRemaining / 60);
+    const secs = state.timerRemaining % 60;
+    dom.timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    // Ring
+    const circumference = 2 * Math.PI * 52; // r=52
+    const progress = state.timerTotal > 0 ? state.timerRemaining / state.timerTotal : 1;
+    const offset = circumference * (1 - progress);
+    dom.timerRingFill.style.strokeDashoffset = offset;
+}
+
+// ── Weather ──
+async function loadWeather() {
+    dom.weatherBody.innerHTML = '<div class="weather-loading">Hava durumu yükleniyor...</div>';
+
+    try {
+        if (!state.weatherLocation) {
+            state.weatherLocation = await window.api.getLocation();
+        }
+
+        if (!state.weatherLocation || !state.weatherLocation.lat) {
+            dom.weatherBody.innerHTML = '<div class="weather-loading">Konum belirlenemedi</div>';
+            return;
+        }
+
+        const data = await window.api.getWeather(state.weatherLocation.lat, state.weatherLocation.lon);
+        if (data && data.current) {
+            state.weather = data.current;
+            renderWeather();
+        } else {
+            dom.weatherBody.innerHTML = '<div class="weather-loading">Veri alınamadı</div>';
+        }
+    } catch {
+        dom.weatherBody.innerHTML = '<div class="weather-loading">Hava durumu yüklenemedi</div>';
+    }
+}
+
+function renderWeather() {
+    const w = state.weather;
+    const loc = state.weatherLocation;
+    const icon = getWeatherIcon(w.weather_code);
+    const condition = getWeatherCondition(w.weather_code);
+
+    dom.weatherBody.innerHTML = `
+        <div class="weather-main">
+            <span class="weather-icon">${icon}</span>
+            <div>
+                <div class="weather-temp">${Math.round(w.temperature_2m)}°</div>
+                <div class="weather-condition">${condition}</div>
+            </div>
+        </div>
+        <div class="weather-details">
+            <span class="weather-extra">💧 Nem: ${w.relative_humidity_2m || '—'}%</span>
+            <span class="weather-extra">💨 Rüzgar: ${w.wind_speed_10m || '—'} km/s</span>
+        </div>
+        <div class="weather-city">${loc.city || ''}, ${loc.country || ''}</div>
+    `;
+}
+
+function getWeatherIcon(code) {
+    if (code === 0) return '☀️';
+    if (code <= 3) return '⛅';
+    if (code <= 48) return '🌫️';
+    if (code <= 55) return '🌦️';
+    if (code <= 65) return '🌧️';
+    if (code <= 77) return '❄️';
+    if (code <= 82) return '🌧️';
+    if (code <= 99) return '⛈️';
+    return '🌤️';
+}
+
+function getWeatherCondition(code) {
+    if (code === 0) return 'Açık';
+    if (code <= 3) return 'Parçalı Bulutlu';
+    if (code <= 48) return 'Sisli';
+    if (code <= 55) return 'Çisenti';
+    if (code <= 65) return 'Yağmurlu';
+    if (code <= 77) return 'Karlı';
+    if (code <= 82) return 'Sağanak';
+    if (code <= 99) return 'Gök Gürültülü';
+    return 'Değişken';
+}
+
+// ── System Monitor ──
+function startMonitorPolling() {
+    refreshMonitor();
+    state.monitorInterval = setInterval(refreshMonitor, 2000);
+}
+
+function stopMonitorPolling() {
+    if (state.monitorInterval) {
+        clearInterval(state.monitorInterval);
+        state.monitorInterval = null;
+    }
+}
+
+async function refreshMonitor() {
+    try {
+        const info = await window.api.getSystemInfo();
+        if (!info) return;
+
+        // CPU gauge
+        const cpuCircum = 263.89;
+        const cpuOffset = cpuCircum * (1 - info.cpu / 100);
+        dom.cpuGauge.style.strokeDashoffset = cpuOffset;
+        dom.cpuValue.textContent = info.cpu + '%';
+
+        // CPU color
+        if (info.cpu > 80) dom.cpuGauge.style.stroke = '#ef4444';
+        else if (info.cpu > 50) dom.cpuGauge.style.stroke = '#f59e0b';
+        else dom.cpuGauge.style.stroke = 'var(--accent)';
+
+        // RAM gauge
+        const ramOffset = cpuCircum * (1 - info.mem / 100);
+        dom.ramGauge.style.strokeDashoffset = ramOffset;
+        dom.ramValue.textContent = info.mem + '%';
+
+        // RAM detail
+        dom.ramDetail.textContent = `${info.memUsed || '—'} / ${info.memTotal || '—'} GB`;
+    } catch {}
+}
+
+// ── Settings ──
+async function loadSettings() {
+    try {
+        const s = await window.api.getSettings();
+        if (s) {
+            state.settings = s;
+            applySettings(s);
+        }
+    } catch {}
+}
+
+function applySettings(s) {
+    if (s.accentColor) {
+        document.documentElement.style.setProperty('--accent', s.accentColor);
+        document.documentElement.style.setProperty('--accent-glow', s.accentColor + '59');
+        // Update active color button
+        $$('.color-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.color === s.accentColor);
+        });
+    }
+    if (s.opacity != null) {
+        document.documentElement.style.setProperty('--bg', `rgba(15, 15, 15, ${s.opacity / 100})`);
+        dom.opacitySlider.value = s.opacity * 100 || 90;
+        setupSliderFill(dom.opacitySlider);
+    }
+    if (s.showLyrics != null) {
+        dom.lyricsSetting.checked = s.showLyrics;
+    }
+}
+
+function setupSettings() {
+    // Color options
+    $$('.color-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('.color-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const color = btn.dataset.color;
+            document.documentElement.style.setProperty('--accent', color);
+            document.documentElement.style.setProperty('--accent-glow', color + '59');
+            window.api.setSetting('accentColor', color);
+            // Re-fill sliders
+            [dom.volumeSlider, dom.brightnessSlider, dom.opacitySlider].forEach(setupSliderFill);
+        });
+    });
+
+    // Opacity
+    dom.opacitySlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        document.documentElement.style.setProperty('--bg', `rgba(15, 15, 15, ${val / 100})`);
+        window.api.setSetting('opacity', val);
+    });
+
+    // Lyrics toggle setting
+    dom.lyricsSetting.addEventListener('change', () => {
+        window.api.setSetting('showLyrics', dom.lyricsSetting.checked);
+    });
+
+    // Reset
+    $('#reset-settings').addEventListener('click', async () => {
+        const s = await window.api.resetSettings();
+        if (s) applySettings(s);
+    });
+}
+
+// ── Utilities ──
+function formatTime(seconds) {
+    if (!seconds || seconds < 0) return '0:00';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ── Start ──
+document.addEventListener('DOMContentLoaded', init);
