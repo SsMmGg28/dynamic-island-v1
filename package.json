@@ -12,7 +12,8 @@
     "electron-store": "^8.2.0",
     "firebase": "^12.12.1",
     "loudness": "^0.4.2",
-    "systeminformation": "^5.22.0"
+    "systeminformation": "^5.22.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "electron": "^30.0.0",
@@ -24,18 +25,19 @@
     "productName": "Dynamic Island",
     "asar": true,
     "win": {
-      "target": "portable",
+      "target": ["nsis", "portable"],
       "icon": "icon.ico",
       "signAndEditExecutable": false
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": false
+      "allowToChangeInstallationDirectory": true
     },
     "files": [
       "main.js",
       "preload.js",
+      "modules/**/*",
       "src/**/*",
       "icon.ico",
       "icon.png",

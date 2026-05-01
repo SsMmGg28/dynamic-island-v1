@@ -1,23 +1,43 @@
-# Codebase Index
+# Codebase Index — Dynamic Island (Modular Architecture)
 > Auto-generated complete reference of all files, features, functions, and their locations.
-> Last generated: 2026-04-23
+> Last generated: 2025-07-02
 
 ## Table of Contents
 - [Features Overview](#features-overview)
+- [Architecture](#architecture)
 - [File-by-File Reference](#file-by-file-reference)
+  - [Entry Points](#entry-points)
+  - [Main Process Modules (modules/)](#main-process-modules-modules)
+  - [Renderer Modules (src/modules/)](#renderer-modules-srcmodules)
+  - [Config and Assets](#config-and-assets)
 - [Function/Symbol Index](#functionsymbol-index)
+- [IPC Channel Reference](#ipc-channel-reference)
+- [Known Issues / Notes](#known-issues--notes)
+
+---
 
 ## Features Overview
 | Feature | Key Files | Description |
 |---------|-----------|-------------|
-| Electron app bootstrap | main.js, preload.js, package.json | Starts the desktop app, creates transparent always-on-top window, registers IPC, and exposes renderer-safe API. |
-| Dynamic Island UI | src/index.html, src/renderer.js, src/styles.css | Implements collapsed/expanded island UI, media controls, sub-panels, and animations. |
-| Windows media bridge | scripts/get-media.ps1, main.js | PowerShell bridge polls Windows GlobalSystemMediaTransportControls and executes media commands. |
-| System controls and monitoring | main.js, src/renderer.js | Volume/brightness control, CPU/RAM polling, display switching, and shortcuts. |
-| Productivity utilities | src/renderer.js, main.js | Timer, notes, clipboard history, screenshot capture, and app launcher workflows. |
-| Game mode and sidebar | main.js, src/renderer.js, src/styles.css | Reduces polling/background work and shows compact sidebar controls/stats. |
-| Study logging integration | main.js, preload.js, src/index.html, src/renderer.js | Firebase auth/logging endpoints exposed to renderer for study session tracking. |
-| Packaging and build config | package.json | Electron run/build scripts, dependency declarations, and electron-builder packaging rules. |
+| Media Control | `modules/media.js`, `src/modules/media.js` | Windows GSMTC via PowerShell bridge; play/pause/next/prev + album art |
+| Lyrics | `modules/system.js`, `src/modules/lyrics.js` | Fetches synced/plain lyrics from lrclib.net with LRU cache |
+| Game Mode | `modules/gamemode.js`, `src/modules/gamemode.js` | High-performance power plan + notification suppression + sidebar overlay |
+| Volume / Brightness | `modules/system.js`, `src/modules/controls.js` | Via loudness npm or PowerShell fallback; WMI brightness |
+| Weather | `modules/system.js`, `src/modules/weather.js` | IP geolocation + Open-Meteo API |
+| System Monitor | `modules/system.js`, `src/modules/controls.js` | CPU/RAM via systeminformation; animated arc gauges |
+| Clipboard Monitor | `modules/clipboard.js`, `src/modules/notes.js` | 1s polling, last 20 items, push to renderer |
+| Notes | `src/modules/notes.js` | Pinnable local notes, saved via electron-store |
+| App Launcher | `modules/launcher.js` | Scans Start Menu + Desktop, icon extraction, shell.openPath |
+| Pomodoro Timer | `src/modules/timer.js` | Countdown with SVG ring, desktop notification on complete |
+| Settings | `src/modules/settings.js` | Theme presets, accent color, opacity, position, idle timeout, autostart |
+| Screenshot | `modules/screenshot.js` | Hides window, captures, saves to Desktop, copies to clipboard |
+| StudyLogger | `modules/studylogger.js`, `src/modules/studylogger.js` | Firebase auth + REST API timer polling + quick-log + exam log |
+| Tray | `modules/tray.js` | System tray icon with media + game mode context menu |
+| Global Shortcuts | `modules/shortcuts.js` | CmdOrCtrl+Alt+Space/M/G/T/Arrow shortcuts |
+| Auto-start | `modules/autostart.js` | Windows registry Run key |
+| Multi-monitor | `modules/ipc.js` | Move window to selected display |
+| Drag to reposition | `src/modules/ui.js` | Drag collapsed island to reposition |
+| Idle notch | `src/modules/ui.js` | Collapses to minimal notch after configurable idle timeout |
 
 ## File-by-File Reference
 

@@ -1,0 +1,107 @@
+/* ── state.js ── Global state, DOM helpers, and module-level vars ── */
+
+// Application state
+const state = {
+    expanded: false,
+    locked: false,
+    activePanel: null,
+    media: null,
+    lyricsData: null,
+    lyricsActive: false,
+    lastLyricsQuery: '',
+    volume: 50,
+    brightness: 50,
+    brightnessSupported: true,
+    gameModeActive: false,
+    gameModeOverlayVisible: false,
+    gameModeAutoHideTimer: null,
+    gameModeStartTime: null,
+    gameModeUptimeInterval: null,
+    weather: null,
+    weatherLocation: null,
+    timerTotal: 25 * 60,
+    timerRemaining: 25 * 60,
+    timerRunning: false,
+    timerInterval: null,
+    settings: {},
+    monitorInterval: null,
+    interpolatedPos: 0,
+    lastMediaTime: 0,
+    posInterval: null,
+    notes: [],
+    clipboardHistory: [],
+    launcherApps: [],
+    installedApps: [],
+    themePresets: [],
+    isDragging: false,
+    isIdle: false,
+    idleTimer: null,
+    idleTimeout: 15000,
+    studyLogger: { uid: null, connected: false },
+    slApi: { connected: false },
+    slTimer: {
+        status: 'idle',
+        branchKey: null,
+        lastPollElapsed: 0,
+        lastPollAt: null,
+    },
+    slStats: null,
+    slPollTimer: null,
+    slSmoothInterval: null,
+};
+
+// DOM helpers
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// DOM cache — populated at script-load time (scripts run after body is parsed)
+const dom = {
+    island: $('#island'),
+    collapsedView: $('#collapsed-view'),
+    expandedView: $('#expanded-view'),
+    clock: $('#clock-display'),
+    statusDot: $('#status-dot'),
+    mediaMini: $('#media-mini'),
+    miniText: $('#mini-text'),
+    pulseRing: $('#pulse-ring'),
+    mediaTitle: $('#media-title'),
+    mediaArtist: $('#media-artist'),
+    playIcon: $('#play-icon'),
+    btnToggle: $('#btn-toggle'),
+    btnPrev: $('#btn-prev'),
+    btnNext: $('#btn-next'),
+    timeCurrent: $('#time-current'),
+    timeTotal: $('#time-total'),
+    progressFill: $('#progress-fill'),
+    progressThumb: $('#progress-thumb'),
+    progressTrack: $('#progress-track'),
+    lyricsToggle: $('#lyrics-toggle'),
+    lyricsContainer: $('#lyrics-container'),
+    lyricsScroll: $('#lyrics-scroll'),
+    volumeSlider: $('#volume-slider'),
+    volumeVal: $('#volume-val'),
+    brightnessSlider: $('#brightness-slider'),
+    brightnessVal: $('#brightness-val'),
+    brightnessRow: $('#brightness-row'),
+    gamemodeCard: $('#gamemode-card'),
+    gamemodeStatus: $('#gamemode-status'),
+    gamemodeBtn: $('#gamemode-btn'),
+    timerDisplay: $('#timer-display'),
+    timerRingFill: $('#timer-ring-fill'),
+    timerStartBtn: $('#timer-start'),
+    weatherBody: $('#weather-body'),
+    cpuGauge: $('#cpu-gauge'),
+    ramGauge: $('#ram-gauge'),
+    cpuValue: $('#cpu-value'),
+    ramValue: $('#ram-value'),
+    ramDetail: $('#ram-detail'),
+    opacitySlider: $('#opacity-slider'),
+    lyricsSetting: $('#lyrics-setting'),
+    toastContainer: $('#toast-container'),
+};
+
+// Module-level vars used across multiple renderer modules
+let collapseTimeout = null;
+let volumeDebounce = null;
+let brightnessDebounce = null;
+let _lastThumbnailUrl = '';

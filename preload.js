@@ -70,15 +70,36 @@ contextBridge.exposeInMainWorld('api', {
     // Open external URL
     openUrl: (url) => ipcRenderer.invoke('shell:openExternal', url),
 
+    // Notifications
+    notifications: {
+        getAll:          ()        => ipcRenderer.invoke('notifications:getAll'),
+        clear:           ()        => ipcRenderer.invoke('notifications:clear'),
+        markRead:        ()        => ipcRenderer.invoke('notifications:markRead'),
+        getSettings:     ()        => ipcRenderer.invoke('notifications:getSettings'),
+        saveSettings:    (patch)   => ipcRenderer.invoke('notifications:saveSettings', patch),
+        getSocketStatus: ()        => ipcRenderer.invoke('notifications:getSocketStatus'),
+    },
+
     // StudyLogger
     studyLogger: {
         getConfig: () => ipcRenderer.invoke('studylogger:getConfig'),
         signIn: (token) => ipcRenderer.invoke('studylogger:signIn', token),
         logSession: (payload) => ipcRenderer.invoke('studylogger:logSession', payload),
         clearToken: () => ipcRenderer.invoke('studylogger:clearToken'),
+        // REST API methods
+        saveApiConfig: (cfg) => ipcRenderer.invoke('studylogger:saveApiConfig', cfg),
+        getApiConfig: () => ipcRenderer.invoke('studylogger:getApiConfig'),
+        pollTimer: () => ipcRenderer.invoke('studylogger:pollTimer'),
+        controlTimer: (action) => ipcRenderer.invoke('studylogger:controlTimer', action),
+        getStats: () => ipcRenderer.invoke('studylogger:getStats'),
+        logSessionApi: (payload) => ipcRenderer.invoke('studylogger:logSessionApi', payload),
+        logExamApi: (payload) => ipcRenderer.invoke('studylogger:logExamApi', payload),
     },
 
     // Events
+    onNotificationNew:    (cb) => ipcRenderer.on('notification:new',          (_, data)   => cb(data)),
+    onNotificationSocketStatus: (cb) => ipcRenderer.on('notification:socketStatus', (_, data) => cb(data)),
+
     onMediaUpdate: (cb) => ipcRenderer.on('media:update', (_, data) => cb(data)),
     onGameModeUpdated: (cb) => ipcRenderer.on('gamemode:updated', (_, active) => cb(active)),
     onClipboardNew: (cb) => ipcRenderer.on('clipboard:new', (_, data) => cb(data)),

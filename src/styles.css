@@ -3,8 +3,8 @@
    ══════════════════════════════════════════════════════════════ */
 
 :root {
-    --accent: #3b82f6;
-    --accent-glow: rgba(59, 130, 246, 0.35);
+    --accent: #8b5cf6;
+    --accent-glow: rgba(139, 92, 246, 0.35);
     --bg: rgba(15, 15, 15, 0.92);
     --bg-lighter: rgba(30, 30, 30, 0.95);
     --text: #ffffff;
@@ -567,16 +567,16 @@ html, body {
 }
 
 .action-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--border-light);
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.2);
     color: var(--text);
 }
 
 .action-btn:active { transform: scale(0.95); }
 
 .action-btn.active {
-    background: rgba(59, 130, 246, 0.12);
-    border-color: rgba(59, 130, 246, 0.25);
+    background: rgba(139, 92, 246, 0.14);
+    border-color: rgba(139, 92, 246, 0.3);
     color: var(--accent);
 }
 
@@ -796,8 +796,8 @@ html, body {
 
 .preset-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
 .preset-btn.active {
-    background: rgba(59, 130, 246, 0.15);
-    border-color: rgba(59, 130, 246, 0.3);
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.35);
     color: var(--accent);
 }
 
@@ -2326,7 +2326,8 @@ html, body {
 .sl-select:focus,
 .sl-input:focus,
 .sl-textarea:focus {
-    border-color: rgba(59, 130, 246, 0.5);
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
 }
 
 .sl-select option,
@@ -2414,4 +2415,143 @@ html, body {
 
 .sl-hint strong {
     color: var(--text);
+}
+
+/* ── StudyLogger — Collapsed Pill ── */
+.sl-mini {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+#sl-mini-icon {
+    font-size: 9px;
+    flex-shrink: 0;
+}
+
+#sl-mini-time {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+#sl-mini-branch {
+    font-size: 10px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+/* ── StudyLogger — Status Bar Stats ── */
+.sl-stats-inline {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+
+/* ── StudyLogger — Live Timer Widget ── */
+.sl-live-timer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    min-height: 80px;
+    justify-content: center;
+}
+
+.sl-state-idle .sl-idle-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+    font-size: 12px;
+}
+
+.sl-timer-clock {
+    font-size: 36px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    transition: color 400ms ease;
+}
+
+.sl-timer-branch {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.sl-timer-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.sl-act-btn {
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 120ms ease;
+}
+
+.sl-act-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.sl-act-btn:active { transform: scale(0.96); }
+.sl-act-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.sl-act-pause  { background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35); color: #fbbf24; }
+.sl-act-pause:hover  { background: rgba(245, 158, 11, 0.2); }
+.sl-act-save   { background: rgba(34, 197, 94, 0.1);   border-color: rgba(34, 197, 94, 0.35);  color: #86efac; }
+.sl-act-save:hover   { background: rgba(34, 197, 94, 0.18); }
+.sl-act-confirm-exam { background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.35); color: #86efac; }
+.sl-act-confirm-exam:hover { background: rgba(34, 197, 94, 0.18); }
+.sl-act-reset  { background: rgba(239, 68, 68, 0.08);  border-color: rgba(239, 68, 68, 0.25);  color: #fca5a5; }
+.sl-act-reset:hover  { background: rgba(239, 68, 68, 0.15); }
+.sl-act-cancel-exam  { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+.sl-act-cancel-exam:hover  { background: rgba(239, 68, 68, 0.15); }
+.sl-act-start  { background: var(--accent); border-color: transparent; color: white; padding: 6px 16px; }
+.sl-act-start:hover  { background: #9d72ff; }
+.sl-act-resume { background: var(--accent); border-color: transparent; color: white; }
+.sl-act-resume:hover { background: #9d72ff; }
+
+.sl-start-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.sl-branch-sel {
+    width: 100%;
+}
+
+.sl-timer-running .sl-timer-clock {
+    animation: sl-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sl-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
 }
