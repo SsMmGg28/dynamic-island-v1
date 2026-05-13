@@ -6,10 +6,14 @@ function setupClickThrough() {
     dom.island.addEventListener('mouseleave', () => {
         if (!state.gameModeActive) window.api.setMouseIgnore(true);
     });
-    const sidebar = $('#gamemode-sidebar');
-    if (sidebar) {
-        sidebar.addEventListener('mouseenter', () => window.api.setMouseIgnore(false));
-        sidebar.addEventListener('mouseleave', () => window.api.setMouseIgnore(true));
+    const hud = $('#gm-hud');
+    if (hud) {
+        hud.addEventListener('mouseenter', () => window.api.setMouseIgnore(false));
+        // Only re-enable ignore when the HUD is hidden; while it's visible the
+        // main-process hideSidebar() manages mouse-ignore on auto-hide/close.
+        hud.addEventListener('mouseleave', () => {
+            if (!state.gameModeOverlayVisible) window.api.setMouseIgnore(true);
+        });
     }
 }
 

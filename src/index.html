@@ -145,17 +145,6 @@
                             <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                             <span>Daha</span>
                         </button>
-                    </div>
-                    <!-- Notifications button with badge -->
-                    <div class="action-notif-wrapper">
-                        <button class="action-btn" id="act-notifications" data-panel="notifications">
-                            <span class="action-notif-icon-wrap">
-                                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
-                                <span class="notif-badge" id="notif-badge" style="display:none">0</span>
-                            </span>
-                            <span>Bildirim</span>
-                        </button>
-                    </div>
                         <div class="more-menu" id="more-menu">
                             <button class="more-menu-item" id="more-timer" data-panel="timer">
                                 <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61 1.42-1.42A9.9 9.9 0 0 0 18 4.34l-1.42 1.42A7.96 7.96 0 0 0 4 12a8 8 0 0 0 15.03-5.61zM12 20a6 6 0 1 1 0-12 6 6 0 0 1 0 12z"/></svg>
@@ -166,6 +155,16 @@
                                 <span>Ekran Görüntüsü</span>
                             </button>
                         </div>
+                    </div>
+                    <!-- Notifications button with badge -->
+                    <div class="action-notif-wrapper">
+                        <button class="action-btn" id="act-notifications" data-panel="notifications">
+                            <span class="action-notif-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                                <span class="notif-badge" id="notif-badge" style="display:none">0</span>
+                            </span>
+                            <span>Bildirim</span>
+                        </button>
                     </div>
                 </div>
 
@@ -183,6 +182,22 @@
                         </button>
                     </div>
                     <div class="panel-body notif-body">
+                        <!-- Connection banner -->
+                        <div class="notif-conn-banner" id="notif-conn-banner">
+                            <div class="ncb-left">
+                                <span class="ncb-dot disconnected" id="ncb-dot">●</span>
+                                <span class="ncb-addr" id="ncb-addr">Bağlantı bekleniyor...</span>
+                            </div>
+                            <button class="ncb-copy" id="ncb-copy" title="IP:Port kopyala" style="display:none">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            </button>
+                        </div>
+                        <!-- Source filter -->
+                        <div class="notif-filter-row">
+                            <button class="nfr-btn active" data-nfr="all">Tümü</button>
+                            <button class="nfr-btn" data-nfr="phone">📱 Telefon</button>
+                            <button class="nfr-btn" data-nfr="pc">🖥️ PC</button>
+                        </div>
                         <div class="notif-list" id="notif-list">
                             <p class="empty-text">Bildirim yok</p>
                         </div>
@@ -354,6 +369,41 @@
                                 <button class="reset-btn" id="reset-settings">Sıfırla</button>
                             </div>
                         </div>
+                        <!-- Notification Settings -->
+                        <div class="setting-group setting-section-divider">
+                            <label class="setting-label setting-section-title">Bildirimler</label>
+                        </div>
+                        <div class="setting-group setting-row">
+                            <label class="setting-label">Bildirimleri Etkinleştir</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="notif-enabled-toggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Android Bağlantısı</label>
+                            <div class="notif-socket-status disconnected" id="notif-socket-status">WebSocket sunucusu başlatılıyor...</div>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">WebSocket Port</label>
+                            <div class="setting-row-inline">
+                                <input type="number" class="sl-input" id="notif-socket-port" min="1024" max="65535" value="8765" style="width:80px">
+                                <button class="pos-btn" id="notif-socket-port-apply">Uygula</button>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Kaynak Filtresi</label>
+                            <div class="notif-source-filter-row" id="notif-source-filter-row">
+                                <button class="nsf-btn active" data-nsf="all">Tümü</button>
+                                <button class="nsf-btn" data-nsf="phone">📱 Telefon</button>
+                                <button class="nsf-btn" data-nsf="pc">🖥️ PC</button>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Susturulan Uygulamalar</label>
+                            <input type="text" class="note-input" id="notif-blocked-apps" placeholder="WhatsApp, Discord..." style="width:100%">
+                            <p class="setting-hint">Virgillü ayır. Bu uygulamalardan bildirim gelmez.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -488,108 +538,60 @@
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
 
-    <!-- Game Mode Sidebar -->
-    <div id="gamemode-sidebar" class="gamemode-sidebar">
-        <div class="gm-sidebar-inner">
-            <!-- Header -->
-            <div class="gm-sidebar-header">
-                <div class="gm-sidebar-title-row">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" class="gm-sidebar-icon"><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-10 7H9v2H7v-2H5v-2h2V9h2v2h2v2zm4.5 2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
-                    <span>OYUN MODU</span>
-                </div>
-                <span class="gm-sidebar-uptime" id="gm-sidebar-uptime">00:00:00</span>
+    <!-- Game Mode HUD (performance-first: GPU transform only, no backdrop-filter) -->
+    <div id="gm-hud" class="gm-hud">
+        <!-- Header: badge + session uptime -->
+        <div class="gm-hud-header">
+            <div class="gm-hud-badge">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-10 7H9v2H7v-2H5v-2h2V9h2v2h2v2zm4.5 2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+                <span>OYUN</span>
             </div>
-
-            <!-- System Stats -->
-            <div class="gm-sidebar-section">
-                <div class="gm-sidebar-stats">
-                    <div class="gm-sidebar-stat">
-                        <svg viewBox="0 0 100 100" class="gm-mini-gauge">
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
-                            <circle class="gm-cpu-arc" cx="50" cy="50" r="40" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="251.33" transform="rotate(-90 50 50)"/>
-                        </svg>
-                        <div class="gm-sidebar-stat-info">
-                            <span class="gm-sidebar-stat-val gm-s-cpu">0%</span>
-                            <span class="gm-sidebar-stat-label">CPU</span>
-                        </div>
-                    </div>
-                    <div class="gm-sidebar-stat">
-                        <svg viewBox="0 0 100 100" class="gm-mini-gauge">
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
-                            <circle class="gm-ram-arc" cx="50" cy="50" r="40" fill="none" stroke="#a855f7" stroke-width="8" stroke-linecap="round" stroke-dasharray="251.33" stroke-dashoffset="251.33" transform="rotate(-90 50 50)"/>
-                        </svg>
-                        <div class="gm-sidebar-stat-info">
-                            <span class="gm-sidebar-stat-val gm-s-ram">0%</span>
-                            <span class="gm-sidebar-stat-label">RAM</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- FPS / Performance -->
-            <div class="gm-sidebar-section">
-                <div class="gm-sidebar-perf">
-                    <div class="gm-perf-item">
-                        <span class="gm-perf-label">GPU</span>
-                        <span class="gm-perf-val gm-s-gpu">—</span>
-                    </div>
-                    <div class="gm-perf-item">
-                        <span class="gm-perf-label">Sıcaklık</span>
-                        <span class="gm-perf-val gm-s-temp">—</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Now Playing -->
-            <div class="gm-sidebar-section gm-sidebar-media">
-                <div class="gm-sidebar-album" id="gm-sidebar-album">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
-                        <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-                    </svg>
-                </div>
-                <div class="gm-sidebar-media-info">
-                    <div class="gm-sidebar-media-title" id="gm-sidebar-title">Müzik çalmıyor</div>
-                    <div class="gm-sidebar-media-artist" id="gm-sidebar-artist">—</div>
-                </div>
-                <div class="gm-sidebar-controls">
-                    <button class="gm-s-btn gm-s-prev" title="Önceki">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-                    </button>
-                    <button class="gm-s-btn gm-s-play gm-s-toggle" title="Çal/Duraklat">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" class="gm-s-play-icon"><polygon points="5,3 19,12 5,21"/></svg>
-                    </button>
-                    <button class="gm-s-btn gm-s-next" title="Sonraki">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6z"/></svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Volume -->
-            <div class="gm-sidebar-section">
-                <div class="gm-sidebar-volume">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8.5v7a4.49 4.49 0 0 0 2.5-3.5z"/></svg>
-                    <input type="range" class="gm-sidebar-slider" id="gm-volume-slider" min="0" max="100" value="50">
-                    <span class="gm-sidebar-vol-val" id="gm-volume-val">50</span>
-                </div>
-            </div>
-
-            <!-- Timer (visible when running) -->
-            <div class="gm-sidebar-section gm-sidebar-timer" id="gm-sidebar-timer" style="display:none">
-                <div class="gm-sidebar-timer-display">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61 1.42-1.42A9.9 9.9 0 0 0 18 4.34l-1.42 1.42A7.96 7.96 0 0 0 4 12a8 8 0 0 0 15.03-5.61z"/></svg>
-                    <span class="gm-sidebar-timer-val" id="gm-sidebar-timer-val">25:00</span>
-                </div>
-            </div>
-
-            <!-- Spacer -->
-            <div class="gm-sidebar-spacer"></div>
-
-            <!-- Exit Button -->
-            <button class="gm-sidebar-exit" id="gm-sidebar-exit">
-                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-                <span>Çık</span>
-            </button>
+            <span id="gm-uptime" class="gm-hud-uptime">00:00</span>
         </div>
+
+        <!-- System stats: text only, no SVG gauges -->
+        <div class="gm-hud-stats">
+            <div class="gm-hud-stat">
+                <span class="gm-hud-stat-label">CPU</span>
+                <span id="gm-cpu-val" class="gm-hud-stat-val">—</span>
+            </div>
+            <div class="gm-hud-stat">
+                <span class="gm-hud-stat-label">RAM</span>
+                <span id="gm-ram-val" class="gm-hud-stat-val">—</span>
+            </div>
+        </div>
+
+        <!-- Now playing -->
+        <div class="gm-hud-media">
+            <div class="gm-hud-media-text">
+                <div id="gm-title"  class="gm-hud-title">Müzik çalmıyor</div>
+                <div id="gm-artist" class="gm-hud-artist">—</div>
+            </div>
+            <div class="gm-hud-controls">
+                <button id="gm-prev" class="gm-hud-btn" title="Önceki">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                </button>
+                <button id="gm-play" class="gm-hud-btn gm-hud-btn-play" title="Çal/Duraklat">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" id="gm-play-icon"><polygon points="5,3 19,12 5,21"/></svg>
+                </button>
+                <button id="gm-next" class="gm-hud-btn" title="Sonraki">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Volume -->
+        <div class="gm-hud-volume">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8.5v7a4.49 4.49 0 0 0 2.5-3.5z"/></svg>
+            <input type="range" id="gm-vol-slider" class="gm-hud-slider" min="0" max="100" value="50">
+            <span id="gm-vol-val" class="gm-hud-vol-val">50</span>
+        </div>
+
+        <!-- Exit button -->
+        <button id="gm-exit" class="gm-hud-exit">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            Oyun Modundan Çık
+        </button>
     </div>
 
     <script src="modules/state.js"></script>
@@ -604,6 +606,7 @@
     <script src="modules/notes.js"></script>
     <script src="modules/settings.js"></script>
     <script src="modules/studylogger.js"></script>
+    <script src="modules/notifications.js"></script>
     <script src="renderer.js"></script>
 </body>
 </html>

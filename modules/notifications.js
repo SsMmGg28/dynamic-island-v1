@@ -1,5 +1,6 @@
 // Windows notification bridge — polls UserNotificationListener via PowerShell.
-// Same spawn/backoff/protocol pattern as media.js.
+// When the combined get-bridge.ps1 is running (ctx.notifBridgeIntegrated === true),
+// NOTIF: lines are routed here from media.js instead of a separate process.
 const { spawn } = require('child_process');
 const { app } = require('electron');
 const path = require('path');
@@ -7,6 +8,8 @@ const path = require('path');
 const NOTIF_HISTORY_MAX = 50;
 
 function startNotificationBridge(ctx) {
+    // When using the combined bridge (get-bridge.ps1), notifications come through media.js
+    if (ctx.notifBridgeIntegrated) return;
     if (ctx.notifBridgeDisabled) return;
 
     const scriptPath = app.isPackaged
@@ -61,9 +64,22 @@ function stopNotificationBridge(ctx) {
     }
 }
 
+// Send a command to the running notification bridge via stdin.
+// Used for: dismiss:<id1>,<id2>,...  exit
+function sendNotifCommand(ctx, cmd) {
+    if (ctx.notifBridge && ctx.notifBridge.stdin && !ctx.notifBridge.killed) {
+        try { ctx.notifBridge.stdin.write(cmd + '\n'); } catch {}
+    }
+}
+
 // Called by notificationSocket.js when a phone notification arrives
 function pushPhoneNotification(ctx, notif) {
     _pushNotification(ctx, { ...notif, source: 'phone' });
+}
+
+// Called by media.js when the combined bridge emits a NOTIF: line
+function _routeNotification(ctx, notif) {
+    _pushNotification(ctx, notif);
 }
 
 function _pushNotification(ctx, notif) {
@@ -96,4 +112,4 @@ function _pushNotification(ctx, notif) {
     }
 }
 
-module.exports = { startNotificationBridge, stopNotificationBridge, pushPhoneNotification };
+module.exports = { startNotificationBridge, stopNotificationBridge, sendNotifCommand, pushPhoneNotification, _routeNotification };

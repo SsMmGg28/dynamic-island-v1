@@ -1,7 +1,11 @@
-// Windows media bridge — PowerShell GSMTC process.
+// Windows media bridge — spawns get-media.ps1 (simple blocking-readline bridge).
 const { spawn } = require('child_process');
 const { app } = require('electron');
 const path = require('path');
+
+// Polling intervals
+const POLL_INTERVAL_PLAYING = 2000;
+const POLL_INTERVAL_IDLE    = 3000;
 
 function startMediaBridge(ctx) {
     const scriptPath = app.isPackaged
@@ -28,13 +32,16 @@ function startMediaBridge(ctx) {
             } else if (line.startsWith('DATA:')) {
                 const cb = ctx.mediaBridgeCallbacks.shift();
                 if (cb) {
-                    try { cb.resolve(JSON.parse(line.substring(5))); }
-                    catch { cb.resolve(null); }
+                    try {
+                        const data = JSON.parse(line.substring(5));
+                        ctx.mediaLastStatus = data?.status ?? 'None';
+                        cb.resolve(data);
+                    } catch { cb.resolve(null); }
                 }
             } else if (line === 'OK' || line === 'BYE') {
                 const cb = ctx.mediaBridgeCallbacks.shift();
                 if (cb) cb.resolve(line);
-            } else if (line.startsWith('ERR:')) {
+            } else if (line.startsWith('ERR:') || line.startsWith('FATAL:')) {
                 const cb = ctx.mediaBridgeCallbacks.shift();
                 if (cb) cb.resolve(null);
             }
@@ -47,6 +54,9 @@ function startMediaBridge(ctx) {
 
     ctx.mediaBridge.on('close', () => {
         ctx.mediaBridgeReady = false;
+        // Drain pending callbacks so in-flight poll() calls don't hang forever.
+        const pending = ctx.mediaBridgeCallbacks.splice(0);
+        for (const cb of pending) cb.resolve(null);
         ctx.mediaBridgeCrashCount++;
         const delay = Math.min(1000 * Math.pow(2, ctx.mediaBridgeCrashCount - 1), 10000);
         setTimeout(() => startMediaBridge(ctx), delay);
@@ -63,15 +73,45 @@ function sendMediaCommand(ctx, cmd) {
     });
 }
 
+// Sends a control command and then pushes an immediate media:update after the
+// OS has had time to process it (400 ms grace period), so the renderer UI
+// refreshes without waiting for the next scheduled poll.
+async function sendControlCommand(ctx, cmd) {
+    const result = await sendMediaCommand(ctx, cmd);
+    setTimeout(async () => {
+        try {
+            const info = await sendMediaCommand(ctx, 'info');
+            if (ctx.mainWindow && !ctx.mainWindow.isDestroyed()) {
+                ctx.mainWindow.webContents.send('media:update', info);
+            }
+        } catch {}
+    }, 400);
+    return result;
+}
+
 function startMediaPolling(ctx) {
-    if (ctx.mediaPollingInterval) clearInterval(ctx.mediaPollingInterval);
-    ctx.mediaPollingInterval = setInterval(async () => {
-        if (!ctx.mediaBridgeReady) return;
+    if (ctx.mediaPollingTimeout) clearTimeout(ctx.mediaPollingTimeout);
+
+    async function poll() {
+        // Always reschedule — even when the bridge is down — so polling
+        // resumes automatically when the bridge reconnects and sets READY.
+        if (!ctx.mediaBridgeReady) {
+            ctx.mediaPollingTimeout = setTimeout(poll, POLL_INTERVAL_IDLE);
+            return;
+        }
         const info = await sendMediaCommand(ctx, 'info');
         if (ctx.mainWindow && !ctx.mainWindow.isDestroyed()) {
             ctx.mainWindow.webContents.send('media:update', info);
         }
-    }, 2000);
+        const isPlaying  = ctx.mediaLastStatus === 'Playing';
+        const hudVisible = ctx.gameModeActive && ctx.gameModeHudVisible;
+        const interval   = (hudVisible || (isPlaying && !ctx.gameModeActive))
+            ? POLL_INTERVAL_PLAYING
+            : POLL_INTERVAL_IDLE;
+        ctx.mediaPollingTimeout = setTimeout(poll, interval);
+    }
+
+    poll();
 }
 
-module.exports = { startMediaBridge, sendMediaCommand, startMediaPolling };
+module.exports = { startMediaBridge, sendMediaCommand, sendControlCommand, startMediaPolling };

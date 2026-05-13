@@ -106,7 +106,31 @@ try {
             # Transient WinRT error — keep polling
         }
 
-        Start-Sleep -Seconds $pollInterval
+        # Wait for next poll interval, but break early if stdin has a command
+        $waited = 0
+        while ($waited -lt ($pollInterval * 1000)) {
+            # Handle stdin commands (dismiss by ID, exit)
+            while ([Console]::In.Peek() -ne -1) {
+                $cmd = [Console]::In.ReadLine()
+                if ($null -eq $cmd) { exit }
+                $cmd = $cmd.Trim()
+                if ($cmd.StartsWith('dismiss:')) {
+                    $rawIds = $cmd.Substring(8).Split(',')
+                    foreach ($rawId in $rawIds) {
+                        $trimmed = $rawId.Trim()
+                        if ($trimmed -match '^\d+$') {
+                            try { $listener.RemoveNotification([uint32]$trimmed) } catch {}
+                        }
+                    }
+                    Write-Output "OK"
+                    [Console]::Out.Flush()
+                } elseif ($cmd -eq 'exit') {
+                    exit
+                }
+            }
+            Start-Sleep -Milliseconds 100
+            $waited += 100
+        }
     }
 } catch {
     Write-Output ("ERR:" + $_.Exception.Message)

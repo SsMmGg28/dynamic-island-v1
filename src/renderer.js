@@ -19,6 +19,11 @@ async function init() {
     setupScreenshotButton();
     setupMoreMenu();
     setupStudyLogger();
+    setupNotifications();
+    setupNotifSettingsHandlers();
+
+    setupGameMode();
+    setupGameModeHud();
 
     // Load theme presets BEFORE settings so saved theme can be applied
     try {
@@ -39,7 +44,10 @@ async function init() {
     } catch {}
 
     // Events from main process
-    window.api.onMediaUpdate(handleMediaUpdate);
+    window.api.onMediaUpdate((data) => {
+        handleMediaUpdate(data);
+        updateHudOnMediaChange();
+    });
     window.api.onGameModeUpdated((active) => {
         state.gameModeActive = active;
         updateGameModeUI();
@@ -52,8 +60,8 @@ async function init() {
     });
     window.api.onShortcutToggleIsland(() => {
         if (state.gameModeActive) {
-            const sidebar = $('#gamemode-sidebar');
-            if (sidebar && sidebar.classList.contains('visible')) hideGameModeSidebar();
+            const hud = $('#gm-hud');
+            if (hud && hud.classList.contains('visible')) hideGameModeSidebar();
             else showGameModeSidebar();
             return;
         }

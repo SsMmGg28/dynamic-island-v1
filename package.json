@@ -41,14 +41,25 @@
       "src/**/*",
       "icon.ico",
       "icon.png",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "!node_modules/electron",
+      "!node_modules/electron-builder",
+      "!node_modules/png-to-ico",
+      "!node_modules/**/{test,tests,__tests__,spec,specs}/**",
+      "!node_modules/**/*.{md,markdown,txt,TXT}",
+      "!node_modules/**/{CHANGELOG,CHANGES,AUTHORS,CONTRIBUTORS,AUTHOR,HISTORY}*",
+      "!node_modules/**/{.github,.gitlab,.editorconfig,.eslintrc*,.prettierrc*}",
+      "!**/*.map",
+      "!**/*.bak",
+      "!**/*.bak2",
+      "!**/debug.log"
     ],
     "extraResources": [
       {
         "from": "scripts",
         "to": "scripts",
         "filter": [
-          "**/*"
+          "**/*.ps1"
         ]
       }
     ]

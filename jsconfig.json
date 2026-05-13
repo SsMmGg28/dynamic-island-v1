@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "checkJs": true,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "paths": {}
+  },
+  "include": [
+    "main.js",
+    "preload.js",
+    "modules/**/*.js",
+    "src/**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

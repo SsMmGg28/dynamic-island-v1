@@ -69,7 +69,7 @@ async function loadInitialData() {
 // ── System Monitor (CPU / RAM polling) ──
 function startMonitorPolling() {
     refreshMonitor();
-    state.monitorInterval = setInterval(refreshMonitor, 2000);
+    state.monitorInterval = setInterval(refreshMonitor, 10000);
 }
 
 function stopMonitorPolling() {

@@ -1,25 +1,25 @@
 // All ipcMain handler registrations.
 const { ipcMain, screen, clipboard, shell } = require('electron');
 
-const { sendMediaCommand } = require('./media');
+const { sendMediaCommand, sendControlCommand } = require('./media');
 const { getVolume, setVolume, getBrightness, setBrightness, getSystemInfo, getWeatherLocation, getWeather, getLyrics } = require('./system');
-const { setGameMode } = require('./gamemode');
+const { setGameMode, showSidebar, hideSidebar } = require('./gamemode');
 const { applyAutoStart } = require('./autostart');
 const { takeScreenshot } = require('./screenshot');
 const { launchApp, pickApp, getInstalledApps } = require('./launcher');
-const { getDesktopIdToken, initFirebase, slApiRequest } = require('./studylogger');
+const { getDesktopIdToken, initFirebase, slApiRequest, saveCredentials, loadCredentials } = require('./studylogger');
 const { startNotificationBridge, stopNotificationBridge } = require('./notifications');
-const { startSocketServer, stopSocketServer, getSocketStatus } = require('./notificationSocket');
+const { startSocketServer, stopSocketServer, getSocketStatus, getOrCreateSecret } = require('./notificationSocket');
 const { registerShortcuts } = require('./shortcuts');
 
 function registerIPC(ctx, DEFAULT_SETTINGS, THEME_PRESETS) {
     // ── Media ──
     ipcMain.handle('media:info',   () => sendMediaCommand(ctx, 'info'));
-    ipcMain.handle('media:play',   () => sendMediaCommand(ctx, 'play'));
-    ipcMain.handle('media:pause',  () => sendMediaCommand(ctx, 'pause'));
-    ipcMain.handle('media:toggle', () => sendMediaCommand(ctx, 'toggle'));
-    ipcMain.handle('media:next',   () => sendMediaCommand(ctx, 'next'));
-    ipcMain.handle('media:prev',   () => sendMediaCommand(ctx, 'prev'));
+    ipcMain.handle('media:play',   () => sendControlCommand(ctx, 'play'));
+    ipcMain.handle('media:pause',  () => sendControlCommand(ctx, 'pause'));
+    ipcMain.handle('media:toggle', () => sendControlCommand(ctx, 'toggle'));
+    ipcMain.handle('media:next',   () => sendControlCommand(ctx, 'next'));
+    ipcMain.handle('media:prev',   () => sendControlCommand(ctx, 'prev'));
 
     // ── System ──
     ipcMain.handle('system:getVolume',    () => getVolume());
@@ -36,6 +36,11 @@ function registerIPC(ctx, DEFAULT_SETTINGS, THEME_PRESETS) {
     // ── Game Mode ──
     ipcMain.handle('gamemode:get', () => ctx.gameModeActive);
     ipcMain.handle('gamemode:set', (_, enabled) => setGameMode(ctx, enabled));
+    // Renderer calls this when it shows/hides the HUD sidebar in game mode
+    ipcMain.handle('gamemode:sidebar:set', (_, visible) => {
+        if (visible) showSidebar(ctx);
+        else hideSidebar(ctx);
+    });
 
     // ── Settings ──
     ipcMain.handle('settings:get', () => ctx.store.get('settings'));
@@ -125,36 +130,24 @@ function registerIPC(ctx, DEFAULT_SETTINGS, THEME_PRESETS) {
         if (ctx.mainWindow) ctx.mainWindow.setPosition(Math.round(x), Math.round(y));
     });
     ipcMain.on('mouse:setIgnore', (_, ignore) => {
+        // In game mode with HUD visible, never re-enable click-through via this IPC path.
+        // The window repositioning (setBounds) fires a synthetic mouseleave before the
+        // renderer receives gamemode:updated, causing a race that disables clicks.
+        if (ignore && ctx.gameModeActive && ctx.gameModeHudVisible) return;
         if (ctx.mainWindow && !ctx.mainWindow.isDestroyed()) {
             if (ignore) ctx.mainWindow.setIgnoreMouseEvents(true, { forward: true });
             else ctx.mainWindow.setIgnoreMouseEvents(false);
         }
     });
 
-    let savedWindowBounds = null;
-    ipcMain.handle('window:gameMode', (_, enabled) => {
-        if (!ctx.mainWindow || ctx.mainWindow.isDestroyed()) return;
-        if (enabled) {
-            if (!savedWindowBounds) {
-                const [wx, wy] = ctx.mainWindow.getPosition();
-                const [ww, wh] = ctx.mainWindow.getSize();
-                savedWindowBounds = { x: wx, y: wy, w: ww, h: wh };
-            }
-            const primary = screen.getPrimaryDisplay();
-            const workArea = primary.workArea;
-            ctx.mainWindow.setBounds({ x: workArea.x, y: workArea.y, width: 96, height: workArea.height });
-        } else if (savedWindowBounds) {
-            ctx.mainWindow.setBounds({ x: savedWindowBounds.x, y: savedWindowBounds.y, width: savedWindowBounds.w, height: savedWindowBounds.h });
-            savedWindowBounds = null;
-        }
-    });
+
 
     // ── Theme & Misc ──
     ipcMain.handle('theme:getPresets', () => THEME_PRESETS);
     ipcMain.handle('app:quit',         () => require('electron').app.quit());
     ipcMain.handle('shell:openExternal', (_, url) => {
-        const allowed = /^https:\/\/studyloggeryks\.vercel\.app/;
-        if (allowed.test(url)) shell.openExternal(url);
+        const allowed = /^https:\/\/studyloggeryks\.vercel\.app(\/|$)/;
+        if (typeof url === 'string' && allowed.test(url)) shell.openExternal(url);
     });
 
     // ── StudyLogger ──
@@ -168,7 +161,7 @@ function registerIPC(ctx, DEFAULT_SETTINGS, THEME_PRESETS) {
             const uid = credential.user.uid;
             const idToken = await credential.user.getIdToken();
             const refreshToken = credential.user.refreshToken;
-            ctx.store.set('studylogger', { customToken, firebaseUid: uid, idToken, refreshToken });
+            saveCredentials(ctx.store, { customToken, firebaseUid: uid, idToken, refreshToken });
             return { ok: true, uid };
         } catch (e) {
             const code = e.code || '';
@@ -183,7 +176,7 @@ function registerIPC(ctx, DEFAULT_SETTINGS, THEME_PRESETS) {
             const ok = await initFirebase(ctx);
             if (!ok) return { ok: false, error: 'Firebase başlatılamadı.' };
             if (!ctx._fbAuth.currentUser) {
-                const saved = ctx.store.get('studylogger') || {};
+                const saved = loadCredentials(ctx.store);
                 if (!saved.customToken) return { ok: false, error: 'no_token' };
                 await ctx._fbHelpers.signInWithCustomToken(ctx._fbAuth, saved.customToken);
             }
@@ -326,7 +319,16 @@ function registerIPC(ctx, DEFAULT_SETTINGS, THEME_PRESETS) {
     ipcMain.handle('notifications:getAll', () => ctx.notificationHistory || []);
 
     ipcMain.handle('notifications:clear', () => {
+        // Collect PC notification IDs (numeric WinRT IDs) before clearing
+        const pcIds = (ctx.notificationHistory || [])
+            .filter(n => n.source === 'pc' && n.id && /^\d+$/.test(String(n.id)))
+            .map(n => String(n.id));
         ctx.notificationHistory = [];
+        // Dismiss those notifications from Windows Notification Center via the bridge
+        if (pcIds.length) {
+            const { sendNotifCommand } = require('./notifications');
+            sendNotifCommand(ctx, `dismiss:${pcIds.join(',')}`);
+        }
         return true;
     });
 
@@ -338,9 +340,11 @@ function registerIPC(ctx, DEFAULT_SETTINGS, THEME_PRESETS) {
     ipcMain.handle('notifications:getSettings', () => {
         const s = ctx.store.get('settings') || {};
         return {
-            notifEnabled:     s.notifEnabled !== false,
-            notifBlockedApps: s.notifBlockedApps || '',
-            notifSocketPort:  s.notifSocketPort || 8765,
+            notifEnabled:       s.notifEnabled !== false,
+            notifBlockedApps:   s.notifBlockedApps || '',
+            notifSocketPort:    s.notifSocketPort || 8765,
+            notifSourceFilter:  s.notifSourceFilter || 'all',
+            notifSocketSecret:  getOrCreateSecret(ctx),
         };
     });
 
@@ -349,6 +353,8 @@ function registerIPC(ctx, DEFAULT_SETTINGS, THEME_PRESETS) {
         if (typeof patch.notifEnabled === 'boolean')    settings.notifEnabled    = patch.notifEnabled;
         if (typeof patch.notifBlockedApps === 'string') settings.notifBlockedApps = patch.notifBlockedApps;
         if (typeof patch.notifSocketPort === 'number')  settings.notifSocketPort  = patch.notifSocketPort;
+        if (typeof patch.notifSourceFilter === 'string' && ['all','phone','pc'].includes(patch.notifSourceFilter))
+            settings.notifSourceFilter = patch.notifSourceFilter;
         ctx.store.set('settings', settings);
 
         // Apply bridge enable/disable

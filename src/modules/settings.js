@@ -19,6 +19,10 @@ async function loadSettingsPanel() {
         }
     } catch {}
 
+    // Load notification settings into UI
+    _renderNotifSettingsUI();
+    _renderSocketStatus();
+
     $$('.pos-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.pos === (state.settings.position || 'center'));
     });

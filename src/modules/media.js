@@ -1,7 +1,12 @@
 /* ── media.js ── Media player state updates and controls ── */
 
 function handleMediaUpdate(info) {
-    if (!info) return;
+    if (!info) {
+        // Bridge returned null — stop any running progress timer so it doesn't
+        // keep ticking while the music is actually paused or the bridge is down.
+        if (state.posInterval) { clearInterval(state.posInterval); state.posInterval = null; }
+        return;
+    }
     if (state.media && info.title === state.media.title && info.duration === state.media.duration && info.status === 'Playing') {
         const diff = Math.abs(state.interpolatedPos - (info.position || 0));
         if (diff < 3) info = { ...info, position: state.interpolatedPos };
@@ -26,8 +31,6 @@ function handleMediaUpdate(info) {
     } else {
         updateMediaUI();
     }
-
-    if (state.gameModeOverlayVisible) updateSidebarContent();
 
     if (state.isIdle) {
         const hasActiveMedia = info.title && info.status === 'Playing';
@@ -113,21 +116,30 @@ function updatePlayIcon(playing) {
 
 function updateAlbumArt(thumbnail) {
     const albumEl = $('#album-art');
-    const gmAlbumEl = $('#gm-sidebar-album');
     if (thumbnail && thumbnail.startsWith('data:') && thumbnail !== _lastThumbnailUrl) {
         _lastThumbnailUrl = thumbnail;
         if (albumEl) albumEl.innerHTML = `<img src="${thumbnail}" alt="Album Art">`;
-        if (gmAlbumEl) gmAlbumEl.innerHTML = `<img src="${thumbnail}" alt="Album Art">`;
     } else if (!thumbnail && _lastThumbnailUrl) {
         _lastThumbnailUrl = '';
         const defaultSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
         if (albumEl) albumEl.innerHTML = defaultSvg;
-        if (gmAlbumEl) gmAlbumEl.innerHTML = defaultSvg;
     }
 }
 
 function setupMediaControls() {
-    dom.btnToggle.addEventListener('click', () => window.api.mediaToggle());
-    dom.btnPrev.addEventListener('click', () => window.api.mediaPrev());
-    dom.btnNext.addEventListener('click', () => window.api.mediaNext());
+    // After any control action, wait 400 ms for the OS to process it,
+    // then immediately re-query so the UI reflects the new state without
+    // waiting for the next scheduled poll.
+    const doControl = async (action) => {
+        await action();
+        setTimeout(async () => {
+            try {
+                const info = await window.api.getMediaInfo();
+                handleMediaUpdate(info);
+            } catch {}
+        }, 400);
+    };
+    dom.btnToggle.addEventListener('click', () => doControl(() => window.api.mediaToggle()));
+    dom.btnPrev.addEventListener('click',   () => doControl(() => window.api.mediaPrev()));
+    dom.btnNext.addEventListener('click',   () => doControl(() => window.api.mediaNext()));
 }

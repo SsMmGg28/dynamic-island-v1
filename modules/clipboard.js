@@ -7,15 +7,16 @@ function startClipboardMonitor(ctx) {
     ctx.clipboardInterval = setInterval(() => {
         if (ctx.gameModeActive) return;
         const text = clipboard.readText() || '';
-        if (text && text !== ctx.lastClipboardText) {
-            ctx.lastClipboardText = text;
-            ctx.clipboardHistory.unshift({ text: text.substring(0, 500), time: Date.now() });
-            if (ctx.clipboardHistory.length > 20) ctx.clipboardHistory.pop();
-            if (ctx.mainWindow && !ctx.mainWindow.isDestroyed()) {
-                ctx.mainWindow.webContents.send('clipboard:new', { text: text.substring(0, 500), time: Date.now() });
-            }
+        // Skip empty or whitespace-only content and unchanged content — no IPC needed
+        if (!text.trim() || text === ctx.lastClipboardText) return;
+        ctx.lastClipboardText = text;
+        const entry = { text: text.substring(0, 500), time: Date.now() };
+        ctx.clipboardHistory.unshift(entry);
+        if (ctx.clipboardHistory.length > 20) ctx.clipboardHistory.pop();
+        if (ctx.mainWindow && !ctx.mainWindow.isDestroyed()) {
+            ctx.mainWindow.webContents.send('clipboard:new', entry);
         }
-    }, 1000);
+    }, 1500);
 }
 
 module.exports = { startClipboardMonitor };

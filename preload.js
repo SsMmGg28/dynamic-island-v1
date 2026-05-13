@@ -59,7 +59,8 @@ contextBridge.exposeInMainWorld('api', {
     setMouseIgnore: (ignore) => ipcRenderer.send('mouse:setIgnore', ignore),
 
     // Game mode window
-    setGameModeWindow: (enabled) => ipcRenderer.invoke('window:gameMode', enabled),
+    // Game mode sidebar visibility (tells main to toggle opacity/throttling)
+    setGameModeSidebar: (visible) => ipcRenderer.invoke('gamemode:sidebar:set', visible),
 
     // Themes
     getThemePresets: () => ipcRenderer.invoke('theme:getPresets'),

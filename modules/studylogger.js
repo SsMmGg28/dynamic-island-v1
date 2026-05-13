@@ -11,6 +11,54 @@ const FIREBASE_CONFIG = {
     appId: '1:54405801440:web:4ae8870a091193277bf785',
 };
 
+// ── Safe storage helpers ──────────────────────────────────────────────────────
+// Encrypts sensitive strings (tokens) with Electron's OS keychain integration.
+// Falls back to plain text on platforms where safeStorage is unavailable.
+
+function encryptToken(value) {
+    try {
+        const { safeStorage } = require('electron');
+        if (safeStorage.isEncryptionAvailable()) {
+            return safeStorage.encryptString(value).toString('base64');
+        }
+    } catch {}
+    return value; // fallback: plain text
+}
+
+function decryptToken(stored) {
+    if (!stored) return null;
+    try {
+        const { safeStorage } = require('electron');
+        if (safeStorage.isEncryptionAvailable()) {
+            return safeStorage.decryptString(Buffer.from(stored, 'base64'));
+        }
+    } catch {}
+    return stored; // fallback: stored value was plain text
+}
+
+/**
+ * Save studylogger credentials — tokens are encrypted before writing.
+ */
+function saveCredentials(store, data) {
+    const entry = { ...data };
+    if (data.refreshToken) entry.refreshToken = encryptToken(data.refreshToken);
+    if (data.idToken)      entry.idToken      = encryptToken(data.idToken);
+    store.set('studylogger', entry);
+}
+
+/**
+ * Load studylogger credentials — tokens are decrypted on read.
+ */
+function loadCredentials(store) {
+    const raw = store.get('studylogger') || {};
+    return {
+        ...raw,
+        refreshToken: raw.refreshToken ? decryptToken(raw.refreshToken) : undefined,
+        idToken:      raw.idToken      ? decryptToken(raw.idToken)      : undefined,
+    };
+}
+
+
 async function initFirebase(ctx) {
     if (ctx._fbAuth) return true;
     try {
@@ -44,7 +92,7 @@ function exchangeRefreshToken(refreshToken, store) {
                     const json = JSON.parse(data);
                     if (json.id_token) {
                         const saved = store.get('studylogger') || {};
-                        store.set('studylogger', { ...saved, refreshToken: json.refresh_token || refreshToken });
+                        store.set('studylogger', { ...saved, refreshToken: encryptToken(json.refresh_token || refreshToken) });
                         resolve(json.id_token);
                     } else { resolve(null); }
                 } catch { resolve(null); }
@@ -61,7 +109,7 @@ async function getDesktopIdToken(ctx) {
     if (ctx._fbAuth && ctx._fbAuth.currentUser) {
         try { return await ctx._fbAuth.currentUser.getIdToken(); } catch {}
     }
-    const saved = ctx.store.get('studylogger') || {};
+    const saved = loadCredentials(ctx.store);
     if (saved.refreshToken) {
         const idToken = await exchangeRefreshToken(saved.refreshToken, ctx.store);
         if (idToken) return idToken;
@@ -74,7 +122,7 @@ async function getDesktopIdToken(ctx) {
         const user = cred.user;
         const idToken = await user.getIdToken();
         const refreshToken = user.refreshToken;
-        ctx.store.set('studylogger', { ...saved, idToken, refreshToken, firebaseUid: user.uid });
+        saveCredentials(ctx.store, { ...saved, idToken, refreshToken, firebaseUid: user.uid });
         return idToken;
     } catch { return null; }
 }
@@ -115,4 +163,4 @@ function slApiRequest(method, urlPath, cfg, body) {
     });
 }
 
-module.exports = { FIREBASE_CONFIG, initFirebase, exchangeRefreshToken, getDesktopIdToken, slApiRequest };
+module.exports = { FIREBASE_CONFIG, initFirebase, exchangeRefreshToken, getDesktopIdToken, slApiRequest, saveCredentials, loadCredentials };
